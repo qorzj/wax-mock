@@ -1,0 +1,11 @@
+jsonschema
+strict-rfc3339
+rfc3987
+aiohttp
+aiohttp_wsgi
+requests
+typing_inspect
+typing_extensions
+redis
+hiredis
+Mako

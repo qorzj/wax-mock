@@ -1,0 +1,10 @@
+{
+  "port": 8080,
+  "git-url": "https://github.com/qorzj/lessweb",
+  "mockapi-prefix": "/wax-api",
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "???"
+  }
+}
