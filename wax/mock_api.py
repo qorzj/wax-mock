@@ -8,7 +8,7 @@ from wax.lessweb.utils import re_standardize, eafp
 from wax.lessweb.webapi import http_methods, NotFoundError, HttpStatus
 from wax.load_config import config
 from wax.load_swagger import SwaggerData
-from wax.load_func import eval_func, default_func
+from wax.load_func import eval_func, default_func, is_evalable, deep_eval
 from wax.service import StateServ
 
 
@@ -252,7 +252,9 @@ def json_egg(obj, *, array):
 def chain_filter(func_chain: List[str], resp_obj, request, response, state):
     for func_item in func_chain:
         if func_item.startswith('@'):
-            func = default_func(func_item[1:], request=request, response=response, state=state)
+            func = default_func(func_item, request=request, response=response, state=state)
+        elif is_evalable(func_item):
+            func = deep_eval(func_item, request=request, response=response, state=state)
         else:
             func = eval_func(func_item, request=request, response=response, state=state)
         resp_obj = func(resp_obj)
@@ -286,7 +288,8 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         state.operation_id = operation['operationId']
         schema, example_json = hit_example(operation, state=state)
         example = json.loads(example_json)
-        func_chain = example.get('@', [])
+        func_chain = example.pop('@', []) if isinstance(example, dict) else []
+        example = deep_eval(example)
         resp_obj = json_egg(example, array=False)
         if isinstance(resp_obj, dict) and '$' in resp_obj:
             resp_obj = resp_obj['$']

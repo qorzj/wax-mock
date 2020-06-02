@@ -14,9 +14,10 @@ app.add_plugin(RedisPlugin(**config['redis']))
 app.add_interceptor('.*', method='*', dealer=allow_cors)
 app.add_options_mapping('.*', lambda:'')
 
-from wax.mock_api import mock_dealer
+from wax.mock_api import mock_dealer, SwaggerData
 wax_api_prefix = config['mockapi-prefix']
 app.add_mapping(f'{wax_api_prefix}/.*', method='*', dealer=mock_dealer)
+app.add_get_mapping('/openapi.json', dealer=lambda: SwaggerData.get())
 
 from wax.tag_api import operation_list, operation_detail, operation_edit_state
 app.add_get_mapping('/', operation_list)
