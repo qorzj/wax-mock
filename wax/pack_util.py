@@ -57,5 +57,5 @@ def pack(json_path):
             key, value = content['key'], content['value']
             swagger_data['components']['schemas'][key] = value
 
-    with open(json_path, 'w', encoding='utf-8') as f:
-        f.write(json_path)
+    with open(json_path, 'w', encoding='utf-8') as fp:
+        json.dump(swagger_data, fp=fp, ensure_ascii=False, indent=2)
