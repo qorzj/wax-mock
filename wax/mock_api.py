@@ -145,9 +145,9 @@ def body_check(operation: Dict, request: Request) -> None:
     raise BadParamError(message='unsupported request content-type', param=real_content_type)
 
 
-def hit_example(operation: Dict, state) -> Tuple[Dict, str]:
+def hit_example(operation: Dict, state) -> Tuple[int, Dict, str]:
     """
-    :return (schema, example_json)
+    :return (status_code, schema, example_json)
     """
     state_basic = state.basic.get()
     if state_basic:
@@ -162,7 +162,7 @@ def hit_example(operation: Dict, state) -> Tuple[Dict, str]:
                 if not state_content_type or state_content_type == content_key:
                     for example_name, example_val in content_val.get('examples', {}).items():
                         if not state_example_name or state_example_name == example_name:
-                            return content_val['schema'], json.dumps(example_val['value'])
+                            return int(status_code), content_val['schema'], json.dumps(example_val['value'])
                     else:
                         raise InternalError('response fail to match example')
             else:
@@ -286,7 +286,7 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         if operation.get('requestBody'):
             body_check(operation, request=request)
         state.operation_id = operation['operationId']
-        schema, example_json = hit_example(operation, state=state)
+        status_code, schema, example_json = hit_example(operation, state=state)
         example = json.loads(example_json)
         func_chain = example.pop('@', []) if isinstance(example, dict) else []
         example = deep_eval(example)
@@ -296,6 +296,8 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         resp_obj = chain_filter(func_chain, resp_obj=resp_obj,
                                 request=request, response=response, state=state)
         response_check(schema=schema, resp_obj=resp_obj)
+        if status_code != 200:
+            response.set_status(HttpStatus.of(status_code))
         return resp_obj
     except InternalError as e:
         response.send_content_type(mimekey='txt', encoding='utf-8')

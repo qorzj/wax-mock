@@ -53,7 +53,7 @@ def load_tag():
                 op.operationId = operation['operationId']
                 op.description = operation.get('description', '')
                 op.all_example = []
-                for status_code, response_val in operation['responses'].items():
+                for status_code, response_val in operation.get('responses', {}).items():
                     for content_key, content_val in response_val['content'].items():
                         for example_name, _ in content_val.get('examples', {}).items():
                             op.all_example.append(f'{status_code}:{content_key}:{example_name}')

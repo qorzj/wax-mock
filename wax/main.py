@@ -33,8 +33,10 @@ def print_help():
     """
     help_text = """wax-mock: 使用OpenAPI3 JSON文件创建mock server
 Usage:
-    wax [json文件路径]      启动mock server
-    wax -v                查看当前版本
+    wax run [json文件路径]      启动mock server
+    wax unpack [json文件路径]   json文件->parts/
+    wax pack [json文件路径]     parts->json文件
+    wax -v                    查看当前版本
     
     """
     print(help_text)
@@ -50,18 +52,28 @@ def entrypoint():
     if sys.argv[1] == '-v':
         print_version()
         exit(0)
-    if Path('config.json').exists():
-        from wax.load_swagger import SwaggerData
-        from wax.load_config import config
-        SwaggerData.init(json_path=sys.argv[1])
-        from wax.index import app
-        app.run(port=config['port'], staticpath='wax-www/static')
-    else:
-        confirm = input("是否创建config.json, wax-www和script (y or n) ? ")
-        if confirm.lower() not in ['y', 'n', 'yes', 'no']:
-            print("请输入 y 或者 n")
-            exit(1)
-        if confirm.lower() == 'y':
-            from wax.zip_data import zipped_data
-            inline_unzip(zipped_data)
-            print("修改config.json后即可运行wax")
+    if len(sys.argv) <= 2 or sys.argv[1] not in ['run', 'pack', 'unpack']:
+        print_help()
+        exit(0)
+    if sys.argv[1] == 'run':
+        if Path('config.json').exists():
+            from wax.load_swagger import SwaggerData
+            from wax.load_config import config
+            SwaggerData.init(json_path=sys.argv[2])
+            from wax.index import app
+            app.run(port=config['port'], staticpath='wax-www/static')
+        else:
+            confirm = input("是否创建config.json, wax-www和script (y or n) ? ")
+            if confirm.lower() not in ['y', 'n', 'yes', 'no']:
+                print("请输入 y 或者 n")
+                exit(1)
+            if confirm.lower() == 'y':
+                from wax.zip_data import zipped_data
+                inline_unzip(zipped_data)
+                print("修改config.json后即可运行wax")
+    elif sys.argv[1] == 'pack':
+        from wax.pack_util import pack
+        pack(json_path=sys.argv[2])
+    elif sys.argv[1] == 'unpack':
+        from wax.pack_util import unpack
+        unpack(json_path=sys.argv[2])
