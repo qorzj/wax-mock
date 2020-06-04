@@ -35,7 +35,6 @@ function save_state() {
             'extra': $('#extra-input').val()
         },
         success: function (data) {
-            alert('保存成功');
         }
     });
 }

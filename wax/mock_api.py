@@ -251,10 +251,10 @@ def json_egg(obj, *, array):
 
 def chain_filter(func_chain: List[str], resp_obj, request, response, state):
     for func_item in func_chain:
-        if func_item.startswith('@'):
-            func = default_func(func_item, request=request, response=response, state=state)
-        elif is_evalable(func_item):
+        if is_evalable(func_item):
             func = deep_eval(func_item, request=request, response=response, state=state)
+        elif func_item.startswith('@'):
+            func = default_func(func_item, request=request, response=response, state=state)
         else:
             func = eval_func(func_item, request=request, response=response, state=state)
         resp_obj = func(resp_obj)
@@ -278,6 +278,7 @@ def response_check(schema, resp_obj) -> None:
 def mock_dealer(request: Request, response: Response, state: StateServ):
     try:
         endpoint, url_params = hit_endpoint(request.path)
+        request.param_input.url_input.update(url_params)
         if 'parameters' in endpoint:
             param_check(endpoint['parameters'], request=request, url_params=url_params)
         operation = hit_operation(endpoint, method=request.method)
@@ -288,7 +289,11 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         state.operation_id = operation['operationId']
         status_code, schema, example_json = hit_example(operation, state=state)
         example = json.loads(example_json)
+
         func_chain = example.pop('@', []) if isinstance(example, dict) else []
+        if isinstance(func_chain, str):
+            func_chain = [func_chain]
+
         example = deep_eval(example)
         resp_obj = json_egg(example, array=False)
         if isinstance(resp_obj, dict) and '$' in resp_obj:
