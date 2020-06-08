@@ -33,9 +33,7 @@ def print_help():
     """
     help_text = """wax-mock: 使用OpenAPI3 JSON文件创建mock server
 Usage:
-    wax run [json文件路径]      启动mock server
-    wax unpack [json文件路径]   json文件->parts/
-    wax pack [json文件路径]     parts->json文件
+    wax run [json目录]      启动mock server
     wax -v                    查看当前版本
     
     """
@@ -71,9 +69,3 @@ def entrypoint():
                 from wax.zip_data import zipped_data
                 inline_unzip(zipped_data)
                 print("修改config.json后即可运行wax")
-    elif sys.argv[1] == 'pack':
-        from wax.pack_util import pack
-        pack(json_path=sys.argv[2])
-    elif sys.argv[1] == 'unpack':
-        from wax.pack_util import unpack
-        unpack(json_path=sys.argv[2])

@@ -1,4 +1,6 @@
 {
+  "title": "",
+  "version": "1.0",
   "port": 8080,
   "git-url": "https://github.com/qorzj/lessweb",
   "mockapi-prefix": "/wax-api",
