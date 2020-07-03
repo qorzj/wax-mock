@@ -66,7 +66,8 @@
                     <pre>${op.path}</pre>
                     </td>
                     <td>
-                        <a href="javascript:void(0)" data-target="state-modal" class="modal-trigger" onclick="clear_modal('${op.operationId}')">详情</a>
+                        <a href="/op/${op.operationId}">详情</a> &nbsp; &nbsp;
+                        <a href="javascript:void(0)" data-target="state-modal" class="btn-flat btn-small modal-trigger" onclick="clear_modal('${op.operationId}')">切换example</a>
                     </td>
                 </tr>
             % endfor

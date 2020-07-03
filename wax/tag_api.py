@@ -1,10 +1,12 @@
 from typing import Dict, List
+import itertools
 from mako.template import Template  # type: ignore
 from wax.lessweb import BadParamError
 from wax.lessweb.webapi import http_methods
 from wax.service import StateServ
 from wax.load_config import config
 from wax.load_swagger import SwaggerData
+from wax.jsonschema_util import jsonschema_to_rows
 
 
 def split_tag(tag: str) -> List[str]:
@@ -77,7 +79,41 @@ def operation_list(tag: str=''):
     )
 
 
-def operation_detail(opId: str, state: StateServ):
+def operation_detail(opId: str, show: str=''):
+    op = op_index.get(opId)
+    swagger_data = SwaggerData.get()
+    endpoint = [val for key, val in swagger_data['paths'].items() if key==op.path][0]
+    operation = endpoint[op.method.lower()]
+    params = {'path': [], 'query': [], 'header': []}
+    for param in itertools.chain(endpoint.get('parameters', []), operation.get('parameters', [])):
+        for source in params.keys():
+            if param['in'] == source:
+                params[source].append(param)
+    data = {'params': params, 'op': operation, 'path': op.path, 'method': op.method,
+            'mock_prefix': config['mockapi-prefix'], 'responses': []}
+    for status_code, response_val in operation.get('responses', {}).items():
+        for content_key, content_val in response_val['content'].items():
+            data['responses'].append({
+                'status_code': status_code,
+                'content_type': content_key,
+                'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data)
+            })
+    data['requests'] = []
+    for content_key, content_val in operation.get('requestBody', {}).get('content', {}).items():
+        data['requests'].append({
+            'content_type': content_key,
+            'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data)
+        })
+    if show == 'json':
+        return data
+    return Template(filename='wax-www/tpl/op_detail_page.mako', input_encoding='utf-8', output_encoding='utf-8').render(
+        tag_tree=tag_tree,
+        git_url=config['git-url'],
+        **data
+    )
+
+
+def operation_example(opId: str, state: StateServ):
     op = op_index.get(opId)
     if not op:
         raise BadParamError(message='opId不存在', param='opId')

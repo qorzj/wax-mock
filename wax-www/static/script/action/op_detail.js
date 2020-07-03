@@ -5,7 +5,7 @@ function clear_modal(opId) {
     $('#extra-input').val('');
     $('#modal-basic').html('');
     $.ajax({
-        url: '/op/' + opId,
+        url: '/op/' + opId + '/example',
         method: 'GET',
         success: function (data) {
             $('#modal-summary').text(data.summary);
