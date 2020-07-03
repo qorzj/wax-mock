@@ -84,9 +84,9 @@
         % endif
         % endfor
         % if requests:
-            <div>Body:</div>
+            <div style="margin-top: 20px; margin-bottom: 10px"><strong>Body:</strong></div>
             % for request in requests:
-                <div>Content-Type: ${request['content_type']}</div>
+                <div style="margin-top: 20px; margin-bottom: 10px"><strong>Content-Type:</strong> ${request['content_type']}</div>
                 <table class="striped"><tbody>
                     % for item in request['rows']:
                         <tr>
