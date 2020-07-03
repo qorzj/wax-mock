@@ -10,7 +10,8 @@ from wax.jsonschema_util import jsonschema_to_rows
 
 
 def split_tag(tag: str) -> List[str]:
-    assert tag
+    if not tag:
+        tag = '其他'
     segs = tag.replace('/', '-').split('-', 2)
     if len(segs) == 1:
         segs.append('API')
@@ -41,9 +42,7 @@ def load_tag():
     for endpoint_path, endpoint in swagger_data['paths'].items():
         for op_method, operation in endpoint.items():
             if op_method.upper() not in http_methods: continue
-            for tag in operation.get('tags', []):
-                if not tag:
-                    continue
+            for tag in operation.get('tags', []) or ['']:
                 major_tag, dir_tag, menu_tag = split_tag(tag)
                 tag_tree.setdefault(major_tag, {})
                 tag_tree[major_tag].setdefault(dir_tag, {})
