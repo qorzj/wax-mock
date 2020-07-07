@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import json
 
 
@@ -46,3 +46,32 @@ def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data:
         return ret
     else:
         return [make_row(level, name, types, description, additional)]
+
+
+def compare_json(level, actual, expect) -> List[str]:
+    def item_to_pair(item) -> Tuple:
+        if isinstance(item, str):
+            return item, item
+        if 'name' in item and 'in' in item:
+            return item['name'], item
+        if 'level' in item and 'types' in item:
+            return item['level'], item
+        if 'rows' in item and 'content_type' in item:
+            return item.get('status_code', '') + ':' + item['content_type'], item['rows']
+        raise NotImplementedError(item)
+
+    if type(actual) != type(expect):
+        return [f'{level} 类型不匹配 actual:{type(actual)} expect:{type(expect)}']
+    if isinstance(actual, dict):
+        ret = []
+        for key in actual.keys() | expect.keys():
+            ret.extend(compare_json(f'{level}:{key}', actual[key], expect[key]))
+        return ret
+    elif isinstance(actual, list):
+        actual_dict = dict(item_to_pair(item) for item in actual)
+        expect_dict = dict(item_to_pair(item) for item in expect)
+        return compare_json(level, actual_dict, expect_dict)
+    elif actual != expect:
+        return [f'{level} 不一致 actual:{type(actual)} expect:{type(expect)}']
+    else:
+        return []

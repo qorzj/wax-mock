@@ -43,7 +43,7 @@
                 <li><a href="#" data-target="slide-out"
                        class="top-nav sidenav-trigger waves-effect waves-light circle hide-on-large-only"><i
                         class="material-icons">menu</i></a></li>
-                % for major_i, major_key in enumerate(tag_tree):
+                % for major_i, major_key in enumerate(x for x in tag_tree if x != 'API'):
                     <li><a href="/tag/${major_key}" style="margin-left: ${(15 * (major_i == 0))}px;">${major_key}</a></li>
                 % endfor
             </ul>
@@ -59,8 +59,8 @@
         </div>
         <div><pre><strong>接口ID:</strong> ${op['operationId']}</pre></div>
         % if 'description' in op:
-            <div>接口描述</div>
-            <div>${op['description']}</div>
+            <div><strong>接口描述:</strong></div>
+            <div><pre>${op['description']}</pre></div>
         % endif
         <hr style="margin-top: 20px"/>
         <h5 style="border-left: 3px solid #0D47A1; padding-left: 6px">请求参数</h5>
@@ -76,8 +76,8 @@
                     % else:
                         <td><span>${item.get('schema', {}).get('type', '')}</span></td>
                     % endif
-                    <td style="width: 60%; text-align: center">${item.get('description', '')}</td>
-                    <td><span class="tooltipped" data-position="bottom" data-tooltip="必传参数">${item.get('required', '✗')}</span></td>
+                    <td style="width: 50%; text-align: center">${item.get('description', '')}</td>
+                    <td><span>(${('必传' if item.get('required') else '非必传')})</span></td>
                 </tr>
             % endfor
             </tbody></table>
@@ -104,10 +104,15 @@
         % endif
         <hr style="margin-top: 20px"/>
         <h5 style="border-left: 3px solid #0D47A1; padding-left: 6px">返回数据</h5>
-        % for response in responses:
+        % for resp_index, response in enumerate(responses):
             <div style="margin-top: 20px; margin-bottom: 10px">
                 <strong>Status Code:</strong> ${response['status_code']}<br/>
-                <strong>Content-Type:</strong> ${response['content_type']}
+                <strong>Content-Type:</strong> ${response['content_type']}<br/>
+                <strong>Examples:</strong>
+                % for example_key in response['examples'].keys():
+                    &nbsp; <a href="javascript:void(0)" data-target="example-modal" class="modal-trigger"
+                              onclick="show_example('${op['operationId']}', ${resp_index}, '${example_key}')">${example_key}</a>
+                % endfor
             </div>
             <table class="striped"><tbody>
                 % for item in response['rows']:
@@ -141,6 +146,14 @@
             <a href="javascript:void(0)" onclick="save_state()" class="modal-close waves-effect waves-green btn-flat">保存</a>
             &nbsp;
             <a href="javascript:void(0)" class="modal-close waves-effect waves-green btn-flat">取消</a>
+        </div>
+    </div>
+    <div id="example-modal" class="modal">
+        <div class="modal-content">
+            <pre id="example-value">...</pre>
+        </div>
+        <div class="modal-footer">
+            <a href="javascript:void(0)" class="modal-close waves-effect waves-green btn-flat">确定</a>
         </div>
     </div>
 </main>

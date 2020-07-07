@@ -1,12 +1,13 @@
 from typing import Dict, List
 import itertools
+import json
 from mako.template import Template  # type: ignore
 from wax.lessweb import BadParamError
 from wax.lessweb.webapi import http_methods
 from wax.service import StateServ
 from wax.load_config import config
-from wax.load_swagger import SwaggerData
-from wax.jsonschema_util import jsonschema_to_rows
+from wax.load_swagger import SwaggerData, parse_operation
+from wax.jsonschema_util import compare_json
 
 
 def split_tag(tag: str) -> List[str]:
@@ -37,7 +38,17 @@ tag_tree: Dict[str, Dict[str, Dict[str, List[Operation]]]] = {}
 op_index: Dict[str, Operation] = {}  # {operationId: Operation}
 
 
+def first_time_append_op(tag_set, major_tag, op) -> bool:
+    tag_set.setdefault(major_tag, set())
+    if (op.method, op.path) not in tag_set[major_tag]:
+        tag_set[major_tag].add((op.method, op.path))
+        return True
+    else:
+        return False
+
+
 def load_tag():
+    tag_set = {}
     swagger_data = SwaggerData.get()
     for endpoint_path, endpoint in swagger_data['paths'].items():
         for op_method, operation in endpoint.items():
@@ -59,13 +70,21 @@ def load_tag():
                         for example_name, _ in content_val.get('examples', {}).items():
                             op.all_example.append(f'{status_code}:{content_key}:{example_name}')
                 tag_tree[major_tag][dir_tag][menu_tag].append(op)
+                #
+                tag_tree.setdefault('API', {'API': {'API': []}})
+                tag_tree[major_tag].setdefault('API', {'API': []})
+                if first_time_append_op(tag_set, 'API', op):
+                    tag_tree['API']['API']['API'].append(op)
+                if first_time_append_op(tag_set, major_tag, op):
+                    tag_tree[major_tag]['API']['API'].append(op)
+                #
                 op_index[op.operationId] = op
 
 
 load_tag()
 
 
-def operation_list(tag: str=''):
+def operation_list(tag: str='API'):
     if not tag and tag_tree:
         tag = list(tag_tree.keys())[0]
     major_tag, dir_tag, menu_tag = split_tag(tag)
@@ -74,7 +93,8 @@ def operation_list(tag: str=''):
         major_tag=major_tag,
         dir_tag=dir_tag,
         menu_tag=menu_tag,
-        git_url=config['git-url']
+        git_url=config['git-url'],
+        title=config['title']
     )
 
 
@@ -83,26 +103,8 @@ def operation_detail(opId: str, show: str=''):
     swagger_data = SwaggerData.get()
     endpoint = [val for key, val in swagger_data['paths'].items() if key==op.path][0]
     operation = endpoint[op.method.lower()]
-    params = {'path': [], 'query': [], 'header': []}
-    for param in itertools.chain(endpoint.get('parameters', []), operation.get('parameters', [])):
-        for source in params.keys():
-            if param['in'] == source:
-                params[source].append(param)
-    data = {'params': params, 'op': operation, 'path': op.path, 'method': op.method,
-            'mock_prefix': config['mockapi-prefix'], 'responses': []}
-    for status_code, response_val in operation.get('responses', {}).items():
-        for content_key, content_val in response_val['content'].items():
-            data['responses'].append({
-                'status_code': status_code,
-                'content_type': content_key,
-                'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data)
-            })
-    data['requests'] = []
-    for content_key, content_val in operation.get('requestBody', {}).get('content', {}).items():
-        data['requests'].append({
-            'content_type': content_key,
-            'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data)
-        })
+    data = {'op': operation, 'path': op.path, 'method': op.method, 'mock_prefix': config['mockapi-prefix']}
+    data.update(parse_operation(swagger_data, endpoint, op.method))
     if show == 'json':
         return data
     return Template(filename='wax-www/tpl/op_detail_page.mako', input_encoding='utf-8', output_encoding='utf-8').render(
@@ -131,3 +133,29 @@ def operation_edit_state(state: StateServ, opId: str, basic:str='', extra:str=''
     if extra is not None:
         state.extra.set(extra, ex=86400 * 90)
     return {}
+
+
+def compare_swagger(actual: dict) -> List[str]:
+    ret = []
+    expect = SwaggerData.get()
+    actual_paths = actual.get('paths', {})
+    for path in actual_paths.keys() | expect['paths'].keys():
+        if path not in actual_paths:
+            ret.append(f'actual未包含path: {path}')
+            continue
+        if path not in expect['paths']:
+            ret.append(f'expect未包含path: {path}')
+            continue
+        for method in actual_paths[path].keys() | expect['paths'][path].keys():
+            if method.upper() not in http_methods:
+                continue
+            if method not in actual_paths[path]:
+                ret.append(f'actual未包含接口：{method.upper()} {path}')
+                continue
+            if method not in expect['paths'][path]:
+                ret.append(f'expect未包含接口：{method.upper()} {path}')
+                continue
+            actual_op = parse_operation(actual, actual_paths[path], method.upper())
+            expect_op = parse_operation(expect, expect['paths'][path], method.upper())
+            ret.extend(compare_json('', actual_op, expect_op))
+    return ret

@@ -11,20 +11,20 @@
     <link href="/static/css/site.css" rel="stylesheet" type='text/css' />
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>接口列表</title>
+    <title>${title}接口列表</title>
 </head>
 
 <body>
 <ul id="slide-out" class="sidenav sidenav-fixed">
     <li>
         <div class="user-view">
-            <a href="/tag/${major_tag}">${major_tag}</a>
+            <a href="/">${title}</a>
         </div>
     </li>
     <li>
         <div class="divider"></div>
     </li>
-    % for dir_key in tag_tree[major_tag]:
+    % for dir_key in (x for x in tag_tree[major_tag] if x != 'API'):
         <li><a class="subheader collapsible-header">${dir_key}</a></li>
         % for menu_key, menu_val in tag_tree[major_tag][dir_key].items():
         %if dir_key == dir_tag and menu_key == menu_tag:
@@ -44,7 +44,7 @@
                 <li><a href="#" data-target="slide-out"
                        class="top-nav sidenav-trigger waves-effect waves-light circle hide-on-large-only"><i
                         class="material-icons">menu</i></a></li>
-                % for major_i, major_key in enumerate(tag_tree):
+                % for major_i, major_key in enumerate(x for x in tag_tree if x != 'API'):
                     <li><a href="/tag/${major_key}" style="margin-left: ${(15 * (major_i == 0))}px;">${major_key}</a></li>
                 % endfor
             </ul>

@@ -1,10 +1,11 @@
 from typing import Dict, Any
 import json
 import jsonschema
-from os.path import getmtime
+import itertools
 from pathlib import Path
 from wax.load_config import config
 from wax.pack_util import packed, dir_mtime
+from wax.jsonschema_util import jsonschema_to_rows
 
 
 class SwaggerData:
@@ -40,3 +41,32 @@ class SwaggerData:
             cls.resolver = jsonschema.RefResolver.from_schema(cls.swagger_data)
             cls.last_modify = last_modify
         return cls.swagger_data
+
+
+def parse_operation(swagger_data, endpoint:Dict, method:str) -> Dict:
+    """
+    :return {'params': ..., 'requests': ..., 'responses': ...}
+    """
+    operation = endpoint[method.lower()]
+    data = {'params': {}, 'requests': [], 'responses': []}
+    params = {'path': [], 'query': [], 'header': []}
+    for param in itertools.chain(endpoint.get('parameters', []), operation.get('parameters', [])):
+        for source in params.keys():
+            if param['in'] == source:
+                params[source].append(param)
+    data['params'].update(params)
+    for status_code, response_val in operation.get('responses', {}).items():
+        for content_key, content_val in response_val['content'].items():
+            data['responses'].append({
+                'status_code': status_code,
+                'content_type': content_key,
+                'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data),
+                'examples': {key: json.dumps(val['value'], ensure_ascii=False, indent=4)
+                             for key, val in content_val.get('examples', {}).items()}
+            })
+    for content_key, content_val in operation.get('requestBody', {}).get('content', {}).items():
+        data['requests'].append({
+            'content_type': content_key,
+            'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data)
+        })
+    return data

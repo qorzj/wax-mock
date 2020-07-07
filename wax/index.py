@@ -19,9 +19,10 @@ wax_api_prefix = config['mockapi-prefix']
 app.add_mapping(f'{wax_api_prefix}/.*', method='*', dealer=mock_dealer)
 app.add_get_mapping('/openapi.json', dealer=lambda: SwaggerData.get())
 
-from wax.tag_api import operation_list, operation_example, operation_detail, operation_edit_state
+from wax.tag_api import operation_list, operation_example, operation_detail, operation_edit_state, compare_swagger
 app.add_get_mapping('/', operation_list)
 app.add_get_mapping('/tag/{tag}', operation_list)
+app.add_post_mapping('/op/state', operation_edit_state)
+app.add_post_mapping('/op/diff', compare_swagger)
 app.add_get_mapping('/op/{opId}', operation_detail)
 app.add_get_mapping('/op/{opId}/example', operation_example)
-app.add_post_mapping('/op/state', operation_edit_state)

@@ -38,3 +38,14 @@ function save_state() {
         }
     });
 }
+
+function show_example(opId, resp_index, example_key) {
+    $("#example-value").html("...");
+    $.ajax({
+        url: '/op/' + opId + '?show=json',
+        method: 'GET',
+        success: function (data) {
+            $("#example-value").text(data.responses[resp_index]['examples'][example_key]);
+        }
+    });
+}
