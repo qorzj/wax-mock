@@ -1,6 +1,6 @@
 from unittest import TestCase
 import json
-from wax.kotlin_util import properties_to_kclass, kclass_index, endpoint_to_kcontroller
+from wax.kotlin_util import schema_to_kclass, kclass_index, endpoint_to_kcontroller
 
 
 swagger_data = {
@@ -195,9 +195,9 @@ swagger_data = {
 
 
 class TestKotlinUtil(TestCase):
-    def test_properties_to_kclass_and_kcontroller(self):
+    def test_schema_to_kclass_and_kcontroller(self):
         for name, schema in swagger_data['components']['schemas'].items():
-            properties_to_kclass(schema['properties'], name, swagger_data)
+            schema_to_kclass(schema, name, swagger_data)
         for path, endpoint in swagger_data['paths'].items():
             print(endpoint_to_kcontroller(path, endpoint, swagger_data))
         for kclass in kclass_index.values():

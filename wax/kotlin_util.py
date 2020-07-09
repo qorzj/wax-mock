@@ -23,10 +23,11 @@ def letter_sign(text: str) -> str:
     return base64.b32encode(hashlib.md5(text.encode()).digest()).decode()
 
 
-def properties_sign(properties: Dict) -> str:
-    core_list = [(key, val.get('format') or val.get('type'), val.get('description'))
+def properties_sign(properties: Dict, required: List) -> str:
+    core_list = [(key, val.get('format') or val.get('type'), val.get('description') or '')
                  for key, val in properties.items()]
     core_list.sort()
+    core_list.extend(sorted(required))
     return letter_sign(json.dumps(core_list, ensure_ascii=False))
 
 
@@ -42,13 +43,15 @@ def make_funcname(opId: str) -> str:
     return ret[0].lower() + ret[1:]
 
 
-def make_typename(prefix: str, properties):
+def make_typename(prefix: str, schema):
+    properties = schema.get('properties', {})
+    required = schema.get('required', [])
     if not properties:
         prefix = 'Success'
     elif 'pageNum' in properties and 'total' in properties and 'list' in properties:
         prefix = 'CommonPage'
     ret = capitalize(prefix)
-    sign = properties_sign(properties)
+    sign = properties_sign(properties, required)
     ret += 'T' + sign[:4].lower()
     return ret + 'Vo'
 
@@ -102,8 +105,9 @@ class Kprop:
 
     def to_kcode(self, type_var='') -> str:
         real_ktype = self.to_ktype(type_var)
-        return f"""@Schema(description = {safe_str(self.description)})
-var {self.name}: {real_ktype}{'' if self.notNull else '?'} = null\n"""
+        return ('@NotNull\n' if self.notNull else '') + \
+               f"""@Schema(description = {safe_str(self.description)})
+var {self.name}: {real_ktype}? = null\n"""
 
 
 class Kclass:
@@ -139,7 +143,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
     if '$ref' in schema:
         ref_schema = jsonschema_from_ref(schema['$ref'], swagger_data)
         typename = schema['$ref'].rsplit('/', 1)[-1]
-        kclass = properties_to_kclass(ref_schema.get('properties', {}), typename, swagger_data)
+        kclass = schema_to_kclass(ref_schema, typename, swagger_data)
         ktype = jsontype_to_ktype('object')
         generic = kclass.typeName
     else:
@@ -148,7 +152,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
             types = [types]
         if 'array' in types:
             items = schema.get('items', {})
-            kprop = schema_to_kprop('ArrayItem', items, swagger_data)
+            kprop = schema_to_kprop(propname + 'Item', items, swagger_data)
             ktype = jsontype_to_ktype('array')
             if kprop.generic:
                 generic = kprop.generic
@@ -156,8 +160,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
                 ktype += '<' + kprop.ktype + '>'
                 generic = ''
         elif 'object' in types:
-            properties = schema.get('properties', {})
-            kclass = properties_to_kclass(properties, make_typename(propname, properties), swagger_data)
+            kclass = schema_to_kclass(schema, make_typename(propname, schema), swagger_data)
             ktype = jsontype_to_ktype('object')
             generic = kclass.typeName
         else:
@@ -173,10 +176,17 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
     return kprop
 
 
-def properties_to_kclass(properties: Dict, typeName, swagger_data) -> Kclass:
+def schema_to_kclass(schema: Dict, typeName, swagger_data) -> Kclass:
+    """
+    object_type_schema -> properties & required -> kclass
+    """
     assert typeName
-    sign = properties_sign(properties)
+    properties = schema.get('properties', {})
+    required = schema.get('required', [])
+    sign = properties_sign(properties, required)
     if sign in kclass_index:
+        if typeName in swagger_data['components']['schemas']:
+            kclass_index[sign].typeName = typeName
         return kclass_index[sign]
     kclass = Kclass()
     kclass.typeName = typeName
@@ -184,6 +194,8 @@ def properties_to_kclass(properties: Dict, typeName, swagger_data) -> Kclass:
     kclass.generics = []
     for key, val in properties.items():
         kprop = schema_to_kprop(key, val, swagger_data)
+        if key in required:
+            kprop.notNull = True
         kclass.properties.append(kprop)
         if kprop.ktype == 'List' and kprop.generic:
             kclass.generics.append(kprop.generic)
@@ -260,7 +272,8 @@ class {controller_name}""" + ' {\n'
 
 
 def import_headers():
-    return """import io.swagger.v3.oas.annotations.Operation
+    return """package com.wax.controller
+import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -269,6 +282,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import javax.validation.constraints.NotNull
 import org.json.JSONObject
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*\n\n"""

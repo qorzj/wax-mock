@@ -8,7 +8,7 @@ from wax.service import StateServ
 from wax.load_config import config
 from wax.load_swagger import SwaggerData, parse_operation
 from wax.jsonschema_util import compare_json
-from wax.kotlin_util import import_headers, properties_to_kclass, endpoint_to_kcontroller, kclass_index
+from wax.kotlin_util import import_headers, schema_to_kclass, endpoint_to_kcontroller, kclass_index
 
 
 def split_tag(tag: str) -> List[str]:
@@ -166,7 +166,7 @@ def make_kotlin_code(ctx: Context) -> str:
     swagger_data = SwaggerData.get()
     ret = [import_headers()]
     for name, schema in swagger_data['components']['schemas'].items():
-        properties_to_kclass(schema['properties'], name, swagger_data)
+        schema_to_kclass(schema, name, swagger_data)
     for path, endpoint in swagger_data['paths'].items():
         ret.append(endpoint_to_kcontroller(path, endpoint, swagger_data))
     for kclass in kclass_index.values():
