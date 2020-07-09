@@ -2,7 +2,9 @@ from typing import List, Optional, Dict, Union
 import json
 import hashlib
 import base64
+from lessweb.webapi import http_methods
 from wax.jsonschema_util import jsonschema_from_ref
+from wax.load_swagger import parse_operation
 
 
 def indented(text: str, n=4):
@@ -10,6 +12,10 @@ def indented(text: str, n=4):
     if text.endswith('\n'):
         ret += '\n'
     return ret
+
+
+def safe_str(text: str) -> str:
+    return json.dumps(text, ensure_ascii=False)
 
 
 def letter_sign(text: str) -> str:
@@ -27,6 +33,13 @@ def properties_sign(properties: Dict) -> str:
 def capitalize(text: str) -> str:
     """首字母大写，其他字母不变"""
     return text[0].upper() + text[1:] if text else ''
+
+
+def make_funcname(opId: str) -> str:
+    for ch in "_/{}\\\"'":
+        opId = opId.replace(ch, '-')
+    ret = ''.join(capitalize(seg) for seg in opId.split('-'))
+    return ret[0].lower() + ret[1:]
 
 
 def make_typename(prefix: str, properties):
@@ -47,6 +60,8 @@ def jsontype_to_ktype(jsontype: str, *, format: str=None) -> str:
             return 'LocalDateTime'
         elif format == 'date':
             return 'LocalDate'
+        elif format == 'time':
+            return 'LocalTime'
         else:
             return 'String'
     elif jsontype == 'number':
@@ -56,30 +71,34 @@ def jsontype_to_ktype(jsontype: str, *, format: str=None) -> str:
     elif jsontype == 'array':
         return 'List'
     elif jsontype == 'object':
-        return 'Any'
+        return 'JSONObject'
     else:
         raise NotImplementedError((jsontype, format))
 
 
 class Kprop:
     name: str
-    ktype: str  # 例如：Int, List<String>, List<*>
+    ktype: str  # 例如：Int, List
     generic: str  # 范型类型名
     notNull: bool
     description: str
+    kclass: Optional['Kclass'] = None  # 仅object类型设置kclass
     intMin: Optional[int] = None
     intMax: Optional[int] = None
 
-    def to_kcode(self, type_var='') -> str:
-        if self.ktype == 'Any' and self.generic:
-            real_ktype = self.generic
+    def to_ktype(self, type_var='') -> str:
+        if self.ktype == 'JSONObject' and self.generic:
+            return self.generic
         elif not self.generic:
-            real_ktype = self.ktype
+            return self.ktype
         elif type_var:
-            real_ktype = f'{self.ktype}<{type_var}>'
+            return f'{self.ktype}<{type_var}>'
         else:
-            real_ktype = f'{self.ktype}<{self.generic}>'
-        return f"""@Schema(description = "{self.description}")
+            return f'{self.ktype}<{self.generic}>'
+
+    def to_kcode(self, type_var='') -> str:
+        real_ktype = self.to_ktype(type_var)
+        return f"""@Schema(description = {safe_str(self.description)})
 var {self.name}: {real_ktype}{'' if self.notNull else '?'} = null\n"""
 
 
@@ -112,6 +131,7 @@ kclass_index: Dict[str, Kclass] = {}  # {sign: Kclass}
 def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
     description = schema.get('description', '')
     notNull = False
+    kclass = None
     if '$ref' in schema:
         ref_schema = jsonschema_from_ref(schema['$ref'], swagger_data)
         typename = schema['$ref'].rsplit('/', 1)[-1]
@@ -124,7 +144,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
             types = [types]
         if 'array' in types:
             items = schema.get('items', {})
-            kprop = schema_to_kprop('[]', items, swagger_data)
+            kprop = schema_to_kprop('Array', items, swagger_data)
             ktype = jsontype_to_ktype('array')
             if kprop.generic:
                 generic = kprop.generic
@@ -145,6 +165,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
     kprop.generic = generic
     kprop.notNull = notNull
     kprop.description = description
+    kprop.kclass = kclass
     return kprop
 
 
@@ -164,3 +185,82 @@ def properties_to_kclass(properties: Dict, typeName, swagger_data) -> Kclass:
             kclass.generics.append(kprop.generic)
     kclass_index[sign] = kclass
     return kclass
+
+
+def schema_to_votype(name: str, schema: Dict, swagger_data) -> str:
+    kprop = schema_to_kprop(name, schema, swagger_data)
+    if kprop.kclass is not None:
+        return f'{kprop.kclass.typeName}{"".join(kprop.kclass.generics)}'
+    else:
+        return kprop.to_ktype()
+
+
+def endpoint_to_kcontroller(path, endpoint, swagger_data) -> str:
+    controller_name = capitalize(make_funcname(path))
+    ret = f"""@RestController
+@Validated
+class {controller_name}""" + ' {\n'
+    for method, operation in endpoint.items():
+        if method.upper() not in http_methods: continue
+        parsed_op = parse_operation(swagger_data, endpoint, method)
+        op_text = f'@{method.capitalize()}Mapping("{path}")\n'
+        op_summary = operation.get('summary', '')
+        op_description = operation.get('description', '')
+        op_text += f'@Operation(summary = {safe_str(op_summary)}, description = {safe_str(op_description)})\n'
+        funcname = make_funcname(operation["operationId"])
+        # 打印@ApiResponses注解
+        resp_ktype = 'String'
+        multiple_resp = False
+        resp_lines = []
+        for status_code, resp_of_status_code in operation.get('responses', {}).items():
+            content_lines = []
+            for content_type, resp_of_content in resp_of_status_code.get('content', {}).items():
+                votype = schema_to_votype(funcname + 'Resp', resp_of_content['schema'], swagger_data)
+                content_lines.append(f'Content(mediaType = "{content_type}", schema = Schema(implementation = {votype}::class))')
+                if status_code == '200' and 'application/json' in content_type.lower():
+                    resp_ktype = votype
+                else:
+                    multiple_resp = True
+            resp_lines.append(f'ApiResponse(responseCode = "{status_code}", content = [{", ".join(content_lines)}])')
+        if multiple_resp:
+            op_text += '@ApiResponses(value = [\n'
+            op_text += indented(',\n'.join(resp_lines)) + '\n])\n'
+        # 打印函数定义和参数列表
+        op_text += f'fun {funcname}('
+        param_lines = []
+        for source in ['path', 'query']:
+            for item in parsed_op['params'][source]:
+                name = item['name']
+                description = item.get('description', name)
+                ktype = jsontype_to_ktype(item['schema']['type'], format=item['schema'].get('format', ''))
+                if not item.get('required'):
+                    ktype += '?'
+                if source == 'path':
+                    param_lines.append(f'@Parameter(description = {safe_str(description)}) @PathVariable {name}: {ktype}')
+                elif source == 'query':
+                    param_lines.append(f'@Parameter(description = {safe_str(description)}) {name}: {ktype}')
+        if parsed_op['requests'] and 'application/json' in operation['requestBody']['content']:
+            votype = schema_to_votype(funcname + 'Req', operation['requestBody']['content']['application/json']['schema'], swagger_data)
+            param_lines.append(f'@RequestBody vo: {votype}')
+        if len(param_lines) > 1:
+            op_text += '\n' + indented(',\n'.join(param_lines))
+        elif len(param_lines) == 1:
+            op_text += param_lines[0]
+        op_text += f'): {resp_ktype}?' + ' {\n    return null\n}'
+        ret += indented(op_text) + '\n\n'
+    return ret + '}\n'
+
+
+def import_headers():
+    return """import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import org.json.JSONObject
+import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.*\n\n"""

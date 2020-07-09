@@ -1,4 +1,6 @@
 import json
 
-
-config = json.loads(open('config.json').read())
+try:
+    config = json.loads(open('config.json').read())
+except:
+    config = {}
