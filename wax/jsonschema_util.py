@@ -12,8 +12,10 @@ def make_row(level, name, types, description, additional, ref=''):
 
 def jsonschema_from_ref(ref: str, swagger_data: Dict) -> Dict:
     ret = swagger_data
+    if '#' in ref:
+        ref = ref.rsplit('#', 1)[-1]
     for seg in ref.split('/'):
-        if not seg or seg == '#': continue
+        if not seg: continue
         ret = ret.get(seg, {})
     return ret
 

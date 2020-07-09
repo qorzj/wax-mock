@@ -9,3 +9,4 @@ typing_extensions
 redis
 hiredis
 Mako
+PyYAML

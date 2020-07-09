@@ -1,9 +1,15 @@
 from pathlib import Path
+import yaml
 import json
 
 
+def glob_find(ref_path):
+    yield from Path(ref_path).glob('*.json')
+    yield from Path(ref_path).glob('*.yaml')
+
+
 def dir_mtime(ref_path):
-    return max(p.stat().st_mtime for p in Path(ref_path).glob('*.json'))
+    return max(p.stat().st_mtime for p in glob_find(ref_path))
 
 
 def packed(ref_path, title, version):
@@ -13,8 +19,11 @@ def packed(ref_path, title, version):
     dup_path_keys = set()
     dup_component_keys = set()
     swagger_data = {}
-    for p in Path(ref_path).glob('*.json'):
-        cur_api = json.load(p.open('r', encoding='utf-8'))
+    for p in glob_find(ref_path):
+        if p.suffix == '.yaml':
+            cur_api = yaml.full_load(p.open('r', encoding='utf-8'))
+        else:
+            cur_api = json.load(p.open('r', encoding='utf-8'))
         if not swagger_data:
             swagger_data.update(cur_api)
             swagger_data['paths'] = {}

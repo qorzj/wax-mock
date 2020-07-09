@@ -60,6 +60,7 @@ setup(
             'redis',
             'hiredis',
             'Mako',
+            'PyYAML',
         ],
         cmdclass={'install': MyInstall},
         entry_points={

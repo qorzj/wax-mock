@@ -2,6 +2,7 @@ from typing import Dict, Any
 import json
 import jsonschema
 import itertools
+import datetime
 from pathlib import Path
 from wax.load_config import config
 from wax.pack_util import packed, dir_mtime
@@ -40,6 +41,7 @@ class SwaggerData:
             cls.swagger_data = packed(cls.json_path, title, version)
             cls.resolver = jsonschema.RefResolver.from_schema(cls.swagger_data)
             cls.last_modify = last_modify
+            print('Reloaded at %s.' % datetime.datetime.fromtimestamp(int(last_modify)))
         return cls.swagger_data
 
 
