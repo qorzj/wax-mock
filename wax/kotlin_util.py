@@ -43,6 +43,10 @@ def make_funcname(opId: str) -> str:
 
 
 def make_typename(prefix: str, properties):
+    if not properties:
+        prefix = 'Success'
+    elif 'pageNum' in properties and 'total' in properties and 'list' in properties:
+        prefix = 'CommonPage'
     ret = capitalize(prefix)
     sign = properties_sign(properties)
     ret += 'T' + sign[:4].lower()
@@ -144,7 +148,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
             types = [types]
         if 'array' in types:
             items = schema.get('items', {})
-            kprop = schema_to_kprop('Array', items, swagger_data)
+            kprop = schema_to_kprop('ArrayItem', items, swagger_data)
             ktype = jsontype_to_ktype('array')
             if kprop.generic:
                 generic = kprop.generic
@@ -187,10 +191,13 @@ def properties_to_kclass(properties: Dict, typeName, swagger_data) -> Kclass:
     return kclass
 
 
-def schema_to_votype(name: str, schema: Dict, swagger_data) -> str:
+def schema_to_votype(name: str, schema: Dict, swagger_data, *, inherit=True) -> str:
     kprop = schema_to_kprop(name, schema, swagger_data)
-    if kprop.kclass is not None:
-        return f'{kprop.kclass.typeName}{"".join(kprop.kclass.generics)}'
+    if kprop.kclass is not None and kprop.kclass.generics:
+        if inherit:
+            return f'{kprop.kclass.typeName}{"".join(kprop.kclass.generics)}'
+        else:
+            return f'{kprop.kclass.typeName}<{", ".join(kprop.kclass.generics)}>'
     else:
         return kprop.to_ktype()
 
@@ -215,10 +222,11 @@ class {controller_name}""" + ' {\n'
         for status_code, resp_of_status_code in operation.get('responses', {}).items():
             content_lines = []
             for content_type, resp_of_content in resp_of_status_code.get('content', {}).items():
-                votype = schema_to_votype(funcname + 'Resp', resp_of_content['schema'], swagger_data)
+                type_prefix = funcname + ('Fail' if status_code >= '400' else 'Resp')
+                votype = schema_to_votype(type_prefix, resp_of_content['schema'], swagger_data)
                 content_lines.append(f'Content(mediaType = "{content_type}", schema = Schema(implementation = {votype}::class))')
                 if status_code == '200' and 'application/json' in content_type.lower():
-                    resp_ktype = votype
+                    resp_ktype = schema_to_votype(type_prefix, resp_of_content['schema'], swagger_data, inherit=False)
                 else:
                     multiple_resp = True
             resp_lines.append(f'ApiResponse(responseCode = "{status_code}", content = [{", ".join(content_lines)}])')
