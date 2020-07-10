@@ -156,9 +156,26 @@ def compare_swagger(actual: dict) -> List[str]:
             if method not in expect['paths'][path]:
                 ret.append(f'expect未包含接口：{method.upper()} {path}')
                 continue
-            actual_op = parse_operation(actual, actual_paths[path], method.upper())
-            expect_op = parse_operation(expect, expect['paths'][path], method.upper())
-            ret.extend(compare_json('', actual_op, expect_op))
+            actual_endpoint = actual_paths[path]
+            expect_endpoint = expect['paths'][path]
+            actual_op = parse_operation(actual, actual_endpoint, method.upper())
+            expect_op = parse_operation(expect, expect_endpoint, method.upper())
+            ret.extend(compare_json(f'{path}:{method}:parameters', actual_op['params'], expect_op['params'], actual, expect))
+            ret.extend(compare_json(
+                f'{path}:{method}:requestBody:content',
+                actual_endpoint[method].get('requestBody', {}).get('content'),
+                expect_endpoint[method].get('requestBody', {}).get('content'),
+                actual, expect))
+            try:
+                actual_endpoint[method]['responses']['200']['content']['application/json'] = actual_endpoint[
+                    method]['responses']['200']['content'].pop('*/*')
+            except:
+                pass
+            ret.extend(compare_json(
+                f'{path}:{method}:responses',
+                actual_endpoint[method].get('responses'),
+                expect_endpoint[method].get('responses'),
+                actual, expect))
     return ret
 
 

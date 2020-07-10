@@ -50,7 +50,7 @@ def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data:
         return [make_row(level, name, types, description, additional)]
 
 
-def compare_json(level, actual, expect) -> List[str]:
+def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
     def item_to_pair(item) -> Tuple:
         if isinstance(item, str):
             return item, item
@@ -63,17 +63,30 @@ def compare_json(level, actual, expect) -> List[str]:
         raise NotImplementedError(item)
 
     if type(actual) != type(expect):
-        return [f'{level} 类型不匹配 actual:{type(actual)} expect:{type(expect)}']
+        if actual or expect:
+            return [f'{level} 类型不匹配 actual:{repr(actual)} expect:{repr(expect)}']
+        else:
+            return []
     if isinstance(actual, dict):
         ret = []
-        for key in actual.keys() | expect.keys():
-            ret.extend(compare_json(f'{level}:{key}', actual[key], expect[key]))
+        if '$ref' in actual:
+            actual = jsonschema_from_ref(actual['$ref'], full_actual)
+        if '$ref' in expect:
+            expect = jsonschema_from_ref(expect['$ref'], full_expect)
+
+        actual_keys = actual.keys() - {'format'} if actual.get('type') == 'integer' and actual.get('format') == 'int32' else actual.keys()
+        expect_keys = expect.keys() - {'format'} if expect.get('type') == 'integer' and expect.get('format') == 'int32' else expect.keys()
+        if 'description' not in actual_keys or 'title' not in actual_keys:
+            expect_keys -= {'description', 'title'}
+
+        for key in actual_keys | expect_keys:
+            ret.extend(compare_json(f'{level}:{key}', actual.get(key), expect.get(key), full_actual, full_expect))
         return ret
     elif isinstance(actual, list):
         actual_dict = dict(item_to_pair(item) for item in actual)
         expect_dict = dict(item_to_pair(item) for item in expect)
-        return compare_json(level, actual_dict, expect_dict)
+        return compare_json(level, actual_dict, expect_dict, full_actual, full_expect)
     elif actual != expect:
-        return [f'{level} 不一致 actual:{type(actual)} expect:{type(expect)}']
+        return [f'{level} 不一致 actual:{repr(actual)} expect:{repr(expect)}']
     else:
         return []
