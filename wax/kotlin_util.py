@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Union
 import json
+import re
 import hashlib
 import base64
 from lessweb.webapi import http_methods
@@ -37,8 +38,7 @@ def capitalize(text: str) -> str:
 
 
 def make_funcname(opId: str) -> str:
-    for ch in "_/{}\\\"'":
-        opId = opId.replace(ch, '-')
+    opId = re.sub("[_/{}\"']", '-', opId)
     ret = ''.join(capitalize(seg) for seg in opId.split('-'))
     return ret[0].lower() + ret[1:]
 
@@ -145,7 +145,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
         typename = schema['$ref'].rsplit('/', 1)[-1]
         kclass = schema_to_kclass(ref_schema, typename, swagger_data)
         ktype = jsontype_to_ktype('object')
-        generic = kclass.typeName
+        generic = f'{kclass.typeName}<{", ".join(kclass.generics)}>' if kclass.generics else kclass.typeName
     else:
         types = schema.get('type') or ['string']
         if not isinstance(types, list):
@@ -162,7 +162,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
         elif 'object' in types:
             kclass = schema_to_kclass(schema, make_typename(propname, schema), swagger_data)
             ktype = jsontype_to_ktype('object')
-            generic = kclass.typeName
+            generic = f'{kclass.typeName}<{", ".join(kclass.generics)}>' if kclass.generics else kclass.typeName
         else:
             ktype = jsontype_to_ktype(schema.get('type'), format=schema.get('format'))
             generic = ''
@@ -206,10 +206,11 @@ def schema_to_kclass(schema: Dict, typeName, swagger_data) -> Kclass:
 def schema_to_votype(name: str, schema: Dict, swagger_data, *, inherit=True) -> str:
     kprop = schema_to_kprop(name, schema, swagger_data)
     if kprop.kclass is not None and kprop.kclass.generics:
+        ret = f'{kprop.kclass.typeName}<{", ".join(kprop.kclass.generics)}>'
         if inherit:
-            return f'{kprop.kclass.typeName}{"".join(kprop.kclass.generics)}'
+            return ''.join(re.sub('[,<>]', '', ret).split())
         else:
-            return f'{kprop.kclass.typeName}<{", ".join(kprop.kclass.generics)}>'
+            return ret
     else:
         return kprop.to_ktype()
 
@@ -260,7 +261,7 @@ class {controller_name}""" + ' {\n'
                 elif source == 'query':
                     param_lines.append(f'@Parameter(description = {safe_str(description)}) {name}: {ktype}')
         if parsed_op['requests'] and 'application/json' in operation['requestBody']['content']:
-            votype = schema_to_votype(funcname + 'Req', operation['requestBody']['content']['application/json']['schema'], swagger_data)
+            votype = schema_to_votype(funcname + 'Req', operation['requestBody']['content']['application/json']['schema'], swagger_data, inherit=False)
             param_lines.append(f'@RequestBody vo: {votype}')
         if len(param_lines) > 1:
             op_text += '\n' + indented(',\n'.join(param_lines))
