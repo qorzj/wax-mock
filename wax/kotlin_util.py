@@ -3,7 +3,7 @@ import json
 import re
 import hashlib
 import base64
-from lessweb.webapi import http_methods
+from wax.lessweb.webapi import http_methods
 from wax.jsonschema_util import jsonschema_from_ref
 from wax.load_swagger import parse_operation
 
