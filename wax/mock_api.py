@@ -10,6 +10,7 @@ from wax.load_config import config
 from wax.load_swagger import SwaggerData
 from wax.load_func import eval_func, default_func, is_evalable, deep_eval
 from wax.service import StateServ
+from wax.jsonschema_util import jsonschema_to_json
 
 
 def base64ed(buf: bytes) -> str:
@@ -164,7 +165,7 @@ def hit_example(operation: Dict, state) -> Tuple[int, Dict, str]:
                         if not state_example_name or state_example_name == example_name:
                             return int(status_code), content_val['schema'], json.dumps(example_val['value'])
                     else:
-                        raise InternalError('response fail to match example')
+                        return int(status_code), content_val['schema'], ''
             else:
                 raise InternalError('response fail to match content-type')
     else:
@@ -288,6 +289,10 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
             body_check(operation, request=request)
         state.operation_id = operation['operationId']
         status_code, schema, example_json = hit_example(operation, state=state)
+        if example_json == '':  # 没有example时产生默认的json
+            if status_code != 200:
+                response.set_status(HttpStatus.of(status_code))
+            return jsonschema_to_json('$', schema, SwaggerData.get())
         example = json.loads(example_json)
 
         func_chain = example.pop('@', []) if isinstance(example, dict) else []

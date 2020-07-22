@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple
+import datetime
 import json
 
 
@@ -95,3 +96,33 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
         return [f'{level} 不一致 actual:{repr(actual)} expect:{repr(expect)}']
     else:
         return []
+
+
+def jsonschema_to_json(name: str, schema: Dict, swagger_data: Dict):
+    if '$ref' in schema:
+        ref_schema = jsonschema_from_ref(schema['$ref'], swagger_data)
+        return jsonschema_to_json(name, ref_schema, swagger_data)
+    types = schema.get('type', [])
+    format = schema.get('format', '')
+    if not isinstance(types, list):
+        types = [types]
+    if 'array' in types:
+        items = schema.get('items', {})
+        return [jsonschema_to_json(name, items, swagger_data)]
+    elif 'object' in types:
+        properties = schema.get('properties', {})
+        return {key: jsonschema_to_json(key, val, swagger_data) for key, val in properties.items()}
+    elif 'integer' in types:
+        return 1
+    elif 'number' in types:
+        return 1.23
+    elif 'boolean' in types:
+        return True
+    elif format == 'date-time':
+        return datetime.datetime.now().isoformat() + 'Z'
+    elif format == 'date':
+        return datetime.date.today().isoformat()
+    elif format == 'time':
+        return datetime.datetime.now().time().isoformat().split('.')[0]
+    else:
+        return name.upper()
