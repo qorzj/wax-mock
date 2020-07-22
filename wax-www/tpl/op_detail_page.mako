@@ -72,9 +72,9 @@
                 <tr>
                     <td style="width: 30%">${item['name']}</td>
                     % if len(item.get('schema', {})) > 1:
-                        <td><span class="tooltipped tooltip-font" data-position="bottom" data-tooltip="${item.get('schema')}">${item.get('schema', {}).get('type', '')}</span></td>
+                        <td><span class="tooltipped tooltip-font" data-position="bottom" data-tooltip="${item.get('schema')}">${item.get('schema', {}).get('type', '')}${(' !' if item.get('required') else '')}</span></td>
                     % else:
-                        <td><span>${item.get('schema', {}).get('type', '')}</span></td>
+                        <td><span>${item.get('schema', {}).get('type', '')}${(' !' if item.get('required') else '')}</span></td>
                     % endif
                     <td style="width: 50%; text-align: center">${item.get('description', '')}</td>
                     <td><span>(${('必传' if item.get('required') else '非必传')})</span></td>
