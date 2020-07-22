@@ -62,13 +62,13 @@ def parse_operation(swagger_data, endpoint:Dict, method:str) -> Dict:
             data['responses'].append({
                 'status_code': status_code,
                 'content_type': content_key,
-                'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data),
+                'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data, required=[]),
                 'examples': {key: json.dumps(val['value'], ensure_ascii=False, indent=4)
                              for key, val in content_val.get('examples', {}).items()}
             })
     for content_key, content_val in operation.get('requestBody', {}).get('content', {}).items():
         data['requests'].append({
             'content_type': content_key,
-            'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data)
+            'rows': jsonschema_to_rows('', '+', content_val.get('schema', {}), swagger_data, required=[])
         })
     return data

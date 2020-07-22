@@ -3,7 +3,7 @@ import json
 import re
 import hashlib
 import base64
-from wax.lessweb.webapi import http_methods
+from wax.lessweb.webapi import http_methods, BadParamError
 from wax.jsonschema_util import jsonschema_from_ref
 from wax.load_swagger import parse_operation
 
@@ -251,7 +251,9 @@ class {controller_name}""" + ' {\n'
         param_lines = []
         for source in ['path', 'query']:
             for item in parsed_op['params'][source]:
-                name = item['name']
+                name = item.get('name')
+                if not name:
+                    raise BadParamError(f'name不能为空', param=f'{path} {method.upper()} {source}')
                 description = item.get('description', name)
                 ktype = jsontype_to_ktype(item['schema']['type'], format=item['schema'].get('format', ''))
                 if not item.get('required'):

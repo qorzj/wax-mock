@@ -20,7 +20,7 @@ def jsonschema_from_ref(ref: str, swagger_data: Dict) -> Dict:
     return ret
 
 
-def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data: Dict) -> List:
+def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data: Dict, *, required: List) -> List:
     level = f'{parent_level}{name}/'
     additional = deep_copy(schema)
     for key in ['description', '$ref', 'type', 'items', 'properties']:
@@ -28,23 +28,28 @@ def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data:
     description = schema.get('description', '')
     if '$ref' in schema:
         ref_schema = jsonschema_from_ref(schema['$ref'], swagger_data)
-        ret = jsonschema_to_rows(parent_level, name, ref_schema, swagger_data)
-        ret[0].update({'description': description, 'additional': additional})
+        ret = jsonschema_to_rows(parent_level, name, ref_schema, swagger_data, required=[])
+        if description:
+            ret[0]['description'] = description
+        if additional:
+            ret[0]['additional'] = additional
         return ret
     types = schema.get('type', [])
     if not isinstance(types, list):
         types = [types]
+    if name in required:
+        types.append('!')
     if 'array' in types:
         items = schema.get('items', {})
         ret = [make_row(level, name, types, description, additional)]
         if items:
-            ret.extend(jsonschema_to_rows(level, '[ ]', items, swagger_data))
+            ret.extend(jsonschema_to_rows(level, '[ ]', items, swagger_data, required=[]))
         return ret
     elif 'object' in types:
         properties = schema.get('properties', {})
         ret = [make_row(level, name, types, description, additional)]
         for key, val in properties.items():
-            ret.extend(jsonschema_to_rows(level, key, val, swagger_data))
+            ret.extend(jsonschema_to_rows(level, key, val, swagger_data, required=additional.get('required', [])))
         return ret
     else:
         return [make_row(level, name, types, description, additional)]
