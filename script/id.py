@@ -1,0 +1,1 @@
+lambda min=1, max=100: list(range(min, max + 1))

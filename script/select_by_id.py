@@ -1,0 +1,1 @@
+lambda ret, request: [x for x in ret if x['id']==int(request.get_input('id'))][0]
