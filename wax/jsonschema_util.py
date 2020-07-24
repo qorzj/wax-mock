@@ -68,9 +68,11 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
             return item.get('status_code', '') + ':' + item['content_type'], item['rows']
         raise NotImplementedError(item)
 
+    if level.count('/') > 12:
+        return [f'{level} 疑似循环引用 actual:{repr(actual)} expect:{repr(expect)}']
     if type(actual) != type(expect):
         if actual or expect:
-            return [f'{level} 类型不匹配 actual:{repr(actual)} expect:{repr(expect)}']
+            return [f'{level} 定义不匹配 actual:{repr(actual)} expect:{repr(expect)}']
         else:
             return []
     if isinstance(actual, dict):

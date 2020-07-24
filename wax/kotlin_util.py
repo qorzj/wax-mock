@@ -219,7 +219,7 @@ def endpoint_to_kcontroller(path, endpoint, swagger_data) -> str:
     controller_name = capitalize(make_funcname(path))
     ret = f"""@RestController
 @Validated
-class {controller_name}""" + ' {\n'
+class {controller_name}Controller""" + ' {\n'
     for method, operation in endpoint.items():
         if method.upper() not in http_methods: continue
         parsed_op = parse_operation(swagger_data, endpoint, method)
