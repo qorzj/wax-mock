@@ -46,6 +46,9 @@ def hit_endpoint(realpath: str) -> Tuple[Dict, Dict]:
     path = realpath[len(config['mockapi-prefix']):]
     swagger_data = SwaggerData.get()
     for endpoint_path, endpoint in swagger_data['paths'].items():
+        if endpoint_path == path:
+            return endpoint, {}
+    for endpoint_path, endpoint in swagger_data['paths'].items():
         search_ret = re.compile(re_standardize(endpoint_path)).search(path)
         if search_ret:
             return endpoint, search_ret.groupdict()
