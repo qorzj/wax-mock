@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple
 import datetime
 import json
+from wax.lessweb.webapi import BadParamError
 
 
 def deep_copy(obj):
@@ -23,6 +24,8 @@ def jsonschema_from_ref(ref: str, swagger_data: Dict) -> Dict:
 
 def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data: Dict, *, required: List) -> List:
     level = f'{parent_level}{name}/'
+    if level.count('/') > 12:
+        raise BadParamError(message="疑似循环引用", param=level)
     additional = deep_copy(schema)
     for key in ['description', '$ref', 'type', 'items', 'properties']:
         additional.pop(key, '')
@@ -69,7 +72,7 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
         raise NotImplementedError(item)
 
     if level.count('/') > 12:
-        return [f'{level} 疑似循环引用 actual:{repr(actual)} expect:{repr(expect)}']
+        raise BadParamError(message="疑似循环引用", param=level)
     if type(actual) != type(expect):
         if actual or expect:
             return [f'{level} 定义不匹配 actual:{repr(actual)} expect:{repr(expect)}']

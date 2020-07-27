@@ -54,11 +54,11 @@ def parse_operation(swagger_data, endpoint:Dict, method:str) -> Dict:
     params = {'path': [], 'query': [], 'header': []}
     for param in itertools.chain(endpoint.get('parameters', []), operation.get('parameters', [])):
         for source in params.keys():
-            if param['in'] == source:
+            if param.get('in', '') == source:
                 params[source].append(param)
     data['params'].update(params)
     for status_code, response_val in operation.get('responses', {}).items():
-        for content_key, content_val in response_val['content'].items():
+        for content_key, content_val in response_val.get('content', {}).items():
             data['responses'].append({
                 'status_code': status_code,
                 'content_type': content_key,
