@@ -76,7 +76,7 @@ def load_tag():
                 tag_tree[major_tag].setdefault('API', {'API': []})
                 if first_time_append_op(tag_set, 'API', op):
                     tag_tree['API']['API']['API'].append(op)
-                if first_time_append_op(tag_set, major_tag, op):
+                if first_time_append_op(tag_set, major_tag, op) and dir_tag != 'API':
                     tag_tree[major_tag]['API']['API'].append(op)
                 #
                 op_index[op.operationId] = op
