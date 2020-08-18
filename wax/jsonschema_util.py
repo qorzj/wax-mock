@@ -71,7 +71,9 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
             return item.get('status_code', '') + ':' + item['content_type'], item['rows']
         raise NotImplementedError(item)
 
-    if level.count('/') > 12:
+    if level.endswith(':examples'):
+        return []
+    if level.count(':') > 12:
         raise BadParamError(message="疑似循环引用", param=level)
     if type(actual) != type(expect):
         if actual or expect:
@@ -85,8 +87,10 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
         if '$ref' in expect:
             expect = jsonschema_from_ref(expect['$ref'], full_expect)
 
-        actual_keys = actual.keys() - {'format'} if actual.get('type') == 'integer' and actual.get('format') == 'int32' else actual.keys()
-        expect_keys = expect.keys() - {'format'} if expect.get('type') == 'integer' and expect.get('format') == 'int32' else expect.keys()
+        actual_keys = actual.keys() - {'format'} if (actual.get('type') == 'integer' and actual.get('format') == 'int32') \
+                    or (actual.get('type') == 'number' and actual.get('format') == 'double') else actual.keys()
+        expect_keys = expect.keys() - {'format'} if (expect.get('type') == 'integer' and expect.get('format') == 'int32') \
+                    or (actual.get('type') == 'number' and actual.get('format') == 'double') else expect.keys()
         if 'description' not in actual_keys or 'title' not in actual_keys:
             expect_keys -= {'description', 'title'}
 
