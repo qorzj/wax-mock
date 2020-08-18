@@ -192,3 +192,20 @@ def make_kotlin_code(ctx: Context) -> str:
             ret.append(kclass.to_inherit())
     ctx.response.send_content_type('txt', encoding='utf-8')
     return '\n'.join(ret)
+
+
+def make_solution_list(ctx: Context) -> str:
+    swagger_data = SwaggerData.get()
+    task_list = []  # (path, method, summary)
+    methods = ['POST', 'PUT', 'GET', 'DELETE']
+    for path, endpoint in swagger_data['paths'].items():
+        for method, operation in endpoint.items():
+            if method.upper() not in http_methods: continue
+            label = '-'.join(path.strip('/').split('/')[:2]) or 'homepath'
+            task_list.append((method.upper(), path, operation.get('summary') or operation.get('operationId'), '~' + label))
+    task_list.sort(key=lambda x: (x[1], methods.index(x[0])))
+    lines = []
+    for task in task_list:
+        lines.append(' * ' + ' '.join(task) + '\n')
+    ctx.response.send_content_type('txt', encoding='utf-8')
+    return ''.join(lines)
