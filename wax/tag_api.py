@@ -196,7 +196,7 @@ def make_kotlin_code(ctx: Context) -> str:
 
 def make_solution_list(ctx: Context) -> str:
     swagger_data = SwaggerData.get()
-    task_list = []  # (path, method, summary)
+    task_list = []  # (path, method, summary, label)
     methods = ['POST', 'PUT', 'GET', 'DELETE']
     for path, endpoint in swagger_data['paths'].items():
         for method, operation in endpoint.items():
