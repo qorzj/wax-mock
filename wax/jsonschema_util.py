@@ -71,7 +71,7 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
             return item.get('status_code', '') + ':' + item['content_type'], item['rows']
         raise NotImplementedError(item)
 
-    if level.endswith(':examples'):
+    if level.endswith(':examples') or level.endswith(':items:description'):
         return []
     if level.count(':') > 12:
         raise BadParamError(message="疑似循环引用", param=level)
