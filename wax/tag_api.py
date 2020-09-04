@@ -67,7 +67,8 @@ def load_tag():
                 op.description = operation.get('description', '')
                 op.all_example = []
                 for status_code, response_val in operation.get('responses', {}).items():
-                    for content_key, content_val in response_val['content'].items():
+                    if not response_val.get('content'): print(f'WARNING: responses is empty -> {op.method} {op.path}')
+                    for content_key, content_val in response_val.get('content', {}).items():
                         for example_name, _ in content_val.get('examples', {}).items():
                             op.all_example.append(f'{status_code}:{content_key}:{example_name}')
                 tag_tree[major_tag][dir_tag][menu_tag].append(op)
