@@ -1,6 +1,7 @@
 from pathlib import Path
 import yaml
 import json
+from wax.common_util import sorted_dict
 
 
 def glob_find(ref_path):
@@ -57,6 +58,9 @@ def packed(ref_path, title, version):
 
     swagger_data['info']['title'] = title
     swagger_data['info']['version'] = version
+    for path in swagger_data['paths']:
+        swagger_data['paths'][path] @= sorted_dict
+    swagger_data['paths'] @= sorted_dict
     return swagger_data
 
 
