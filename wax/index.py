@@ -15,10 +15,10 @@ app.add_interceptor('.*', method='*', dealer=allow_cors)
 app.add_options_mapping('.*', lambda:'')
 
 from wax.mock_api import mock_dealer, SwaggerData
-from wax.tag_api import make_kotlin_code, make_solution_list
+from wax.tag_api import make_kotlin_code, make_solution_list, make_openapi_json
 wax_api_prefix = config['mockapi-prefix']
 app.add_mapping(f'{wax_api_prefix}/.*', method='*', dealer=mock_dealer)
-app.add_get_mapping('/openapi.json', dealer=lambda: SwaggerData.get())
+app.add_get_mapping('/openapi.json', dealer=make_openapi_json)
 app.add_get_mapping('/openapi.kt', dealer=make_kotlin_code)
 app.add_get_mapping('/solution.md', dealer=make_solution_list)
 

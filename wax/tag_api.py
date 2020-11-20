@@ -62,8 +62,12 @@ def load_tag():
                 op = Operation()
                 op.method = op_method.upper()
                 op.path = endpoint_path
-                op.summary = operation['summary']
-                op.operationId = operation['operationId']
+                try:
+                    op.summary = operation['summary']
+                    op.operationId = operation['operationId']
+                except:
+                    print(endpoint_path, op_method.upper())
+                    raise
                 op.description = operation.get('description', '')
                 op.all_example = []
                 for status_code, response_val in operation.get('responses', {}).items():
@@ -210,3 +214,15 @@ def make_solution_list(ctx: Context) -> str:
         lines.append(' * ' + ' '.join(task) + '\n')
     ctx.response.send_content_type('txt', encoding='utf-8')
     return ''.join(lines)
+
+
+def make_openapi_json() -> Dict:
+    swagger_data = SwaggerData.get()
+    cleared_swagger = {key: (val if key != 'paths' else (
+        lambda items: {path: (
+            lambda items: {method: ((
+                lambda items: {mkey: (val if mkey != 'tags' else []) for mkey, val in items}
+            )(val.items()) if isinstance(val, dict) else val) for method, val in items}
+        )(val.items()) for path, val in items}
+    )(val.items()) ) for key, val in swagger_data.items()}
+    return cleared_swagger
