@@ -24,13 +24,13 @@ def jsonschema_from_ref(ref: str, swagger_data: Dict) -> Dict:
 
 def jsonschema_to_rows(parent_level: str, name: str, schema: Dict, swagger_data: Dict, *, required: List) -> List:
     level = f'{parent_level}{name}/'
-    if level.count('/') > 40:
-        raise BadParamError(message="疑似循环引用", param=level)
     additional = deep_copy(schema)
     for key in ['description', '$ref', 'type', 'items', 'properties']:
         additional.pop(key, '')
     description = schema.get('description', '')
     if '$ref' in schema:
+        if level.count('/') > 40:  # 疑似循环引用
+            return [make_row(level, name, schema['$ref'].split('/')[-1], description, additional)]
         ref_schema = jsonschema_from_ref(schema['$ref'], swagger_data)
         ret = jsonschema_to_rows(parent_level, name, ref_schema, swagger_data, required=[])
         if description:
@@ -73,8 +73,8 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
 
     if level.endswith(':examples') or level.endswith(':items:description'):
         return []
-    if level.count(':') > 40:
-        raise BadParamError(message="疑似循环引用", param=level)
+    if level.count(':') > 50:  # 层级过深不再"深究"
+        return []
     if type(actual) != type(expect):
         if actual or expect:
             return [f'{level} 定义不匹配 actual:{repr(actual)} expect:{repr(expect)}']

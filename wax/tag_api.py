@@ -141,10 +141,12 @@ def operation_edit_state(state: StateServ, opId: str, basic:str='', extra:str=''
     return {}
 
 
-def compare_swagger(actual: dict) -> List[str]:
+def compare_swagger(ctx: Context, actual: dict) -> List[str]:
     ret = []
     expect = SwaggerData.get()
     actual_paths = actual.get('paths', {})
+    ignore_str = ctx.request.param_input.query_input.get('ignore', '')
+    ignores = ignore_str.split(',') if ignore_str else []
     for path in actual_paths.keys() | expect['paths'].keys():
         if path not in actual_paths:
             ret.append(f'actual未包含path: {path}')
@@ -165,6 +167,9 @@ def compare_swagger(actual: dict) -> List[str]:
             expect_endpoint = expect['paths'][path]
             actual_op = parse_operation(actual, actual_endpoint, method.upper())
             expect_op = parse_operation(expect, expect_endpoint, method.upper())
+            if actual_paths[path][method].get('operationId', '!') in ignores \
+                    or expect['paths'][path][method].get('operationId', '!') in ignores:
+                continue
             ret.extend(compare_json(f'{path}:{method}:parameters', actual_op['params'], expect_op['params'], actual, expect))
             ret.extend(compare_json(
                 f'{path}:{method}:requestBody:content',
