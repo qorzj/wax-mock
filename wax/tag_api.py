@@ -141,12 +141,11 @@ def operation_edit_state(state: StateServ, opId: str, basic:str='', extra:str=''
     return {}
 
 
-def compare_swagger(ctx: Context, actual: dict) -> List[str]:
+def compare_swagger(ctx: Context, actual: dict, ignore: str='') -> List[str]:
     ret = []
     expect = SwaggerData.get()
     actual_paths = actual.get('paths', {})
-    ignore_str = ctx.request.param_input.query_input.get('ignore', '')
-    ignores = ignore_str.split(',') if ignore_str else []
+    ignores = ignore.split(',') if ignore else []
     for path in actual_paths.keys() | expect['paths'].keys():
         if path not in actual_paths:
             ret.append(f'actual未包含path: {path}')
@@ -223,11 +222,23 @@ def make_solution_list(ctx: Context) -> str:
 
 def make_openapi_json() -> Dict:
     swagger_data = SwaggerData.get()
-    cleared_swagger = {key: (val if key != 'paths' else (
-        lambda items: {path: (
-            lambda items: {method: ((
-                lambda items: {mkey: (val if mkey != 'tags' else []) for mkey, val in items}
-            )(val.items()) if isinstance(val, dict) else val) for method, val in items}
-        )(val.items()) for path, val in items}
-    )(val.items()) ) for key, val in swagger_data.items()}
+    cleared_swagger = {
+        key: (
+            val if key != 'paths' else (
+                lambda items: {
+                    path: (
+                        lambda items: {
+                            method: (
+                                (
+                                    lambda items: {
+                                        mkey: (val if mkey != 'tags' else [])
+                                        for mkey, val in items
+                                    }
+                                )(val.items())
+                                if isinstance(val, dict) else val
+                            ) for method, val in items}
+                    )(val.items())
+                for path, val in items}
+            )(val.items())
+        ) for key, val in swagger_data.items()}
     return cleared_swagger
