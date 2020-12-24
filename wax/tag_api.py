@@ -147,6 +147,8 @@ def compare_swagger(ctx: Context, actual: dict, ignore: str='') -> List[str]:
     actual_paths = actual.get('paths', {})
     ignores = ignore.split(',') if ignore else []
     for path in actual_paths.keys() | expect['paths'].keys():
+        if path in ignores:
+            continue
         if path not in actual_paths:
             ret.append(f'actual未包含path: {path}')
             continue
@@ -166,9 +168,6 @@ def compare_swagger(ctx: Context, actual: dict, ignore: str='') -> List[str]:
             expect_endpoint = expect['paths'][path]
             actual_op = parse_operation(actual, actual_endpoint, method.upper())
             expect_op = parse_operation(expect, expect_endpoint, method.upper())
-            if actual_paths[path][method].get('operationId', '!') in ignores \
-                    or expect['paths'][path][method].get('operationId', '!') in ignores:
-                continue
             ret.extend(compare_json(f'{path}:{method}:parameters', actual_op['params'], expect_op['params'], actual, expect))
             ret.extend(compare_json(
                 f'{path}:{method}:requestBody:content',
