@@ -367,6 +367,6 @@ def pql_playground(query: dict, path: dict, header: dict, body: dict, schema: di
     }
     try:
         resp_obj = apply_schema(env, dict_schema=schema)
-    except (InternalError, PqlRuntimeError) as e:
-        resp_obj = {'error': str(e)}
+    except Exception as e:
+        resp_obj = {'error': str(e), 'type': str(type(e))}
     return resp_obj

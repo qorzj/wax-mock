@@ -137,7 +137,14 @@ def apply_schema(env, dict_schema) -> Any:
                 func_or_schemas = [func_or_schemas]
             for func_or_schema in func_or_schemas:
                 if isinstance(func_or_schema, str):
-                    value = apply_lambda(env, func=func_or_schema)
+                    if not func_or_schema:
+                        raise PqlRuntimeError(key, '语法错误，不支持空字符串')
+                    try:
+                        value = apply_lambda(env, func=func_or_schema)
+                    except SyntaxError as e:
+                        raise PqlRuntimeError(key, '语法错误: ' + str(e))
+                    except Exception as e:
+                        raise PqlRuntimeError(key, f'运行时错误: {type(e)} {e}')
                 elif isinstance(func_or_schema, dict):
                     try:
                         value = apply_schema(dict(env), dict_schema=func_or_schema)
