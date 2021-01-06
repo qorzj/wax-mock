@@ -18,6 +18,19 @@ def base64ed(buf: bytes) -> str:
     return base64.standard_b64encode(buf).decode()
 
 
+def cast_param(param_value: List[str], param_type: str):
+    if param_type == 'number':
+        return float(param_value[0])
+    elif param_type == 'integer':
+        return int(param_value[0])
+    elif param_type == 'boolean':
+        return bool(int(param_value[0]) if param_value[0].isdigit() else param_value[0])
+    elif param_type == 'array':
+        return param_value
+    else:  # e.g. 'string'
+        return str(param_value[0])
+
+
 def opt_number(n):
     try:
         return int(n)
@@ -302,12 +315,32 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         if request.is_json():
             req_body = request.json_input
         elif request.is_form():
-            req_body = {k: v[0] for (k, v) in request.param_input.form_input.items()}
+            req_body = {}
+            try:
+                property_dict = {'_': v for v in operation['requestBody']['content'].values()}['_']['schema']['properties']
+                for param_name, param_prop in property_dict.items():
+                    if param_name in request.param_input.form_input:
+                        req_body[param_name] = cast_param(request.param_input.form_input[param_name], param_prop.get('type', ''))
+            except:
+                pass
         else:
             req_body = request.body_data
-        req_query = {k: v[0] for (k, v) in request.param_input.query_input.items()}
-        req_path = {**request.param_input.url_input}
-        req_header = {k: request.get_header(k) for k in request.get_headernames()}
+        req_query, req_path, req_header = {}, {}, {}
+        for param in endpoint.get('parameters', []) + params:
+            param_name = param.get('name')
+            if not param_name:
+                continue
+            param_type = eafp(lambda: param['schema']['type'], '')
+            if param.get('in') == 'path':
+                if param_name in request.param_input.url_input:
+                    req_path[param_name] = cast_param([request.param_input.url_input[param_name]], param_type)
+            elif param.get('in') == 'header':
+                header_value = request.get_header(param_name)
+                if header_value is not None:
+                    req_header[param_name] = cast_param([header_value], param_type)
+            else:
+                if param_name in request.param_input.query_input:
+                    req_query[param_name] = cast_param(request.param_input.query_input[param_name], param_type)
         env = {
             'body': req_body,
             'query': req_query,
@@ -323,3 +356,17 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         response.send_content_type(mimekey='txt', encoding='utf-8')
         response.set_status(HttpStatus.InternalServerError)
         return str(e)
+
+
+def pql_playground(query: dict, path: dict, header: dict, body: dict, schema: dict):
+    env = {
+        "query": query,
+        "path": path,
+        "header": header,
+        "body": body,
+    }
+    try:
+        resp_obj = apply_schema(env, dict_schema=schema)
+    except (InternalError, PqlRuntimeError) as e:
+        resp_obj = {'error': str(e)}
+    return resp_obj

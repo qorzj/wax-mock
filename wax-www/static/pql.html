@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='UTF-8' />
+    <link rel='shortcut icon' type='image/x-icon' href='/static/favicon.ico' media='screen' />
+    <!--Import Google Icon Font-->
+    <link href="/static/css/icons.css" rel="stylesheet" type='text/css' />
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="/static/css/materialize.css" media="screen,projection" />
+    <link href="/static/css/site.css" rel="stylesheet" type='text/css' />
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mockjs playground</title>
+    <style>
+        .tooltip-font {
+            color: #B71C1C;
+        }
+    </style>
+</head>
+
+<body>
+<main>
+    <div class='container'>
+        <h5>PQLschema验证工具：</h5>
+        <div>
+            <label for='path-input'>请输入path:</label>
+            <textarea id="path-input" class="materialize-textarea">{}</textarea>
+        </div>
+        <div>
+            <label for='query-input'>请输入query:</label>
+            <textarea id="query-input" class="materialize-textarea">{}</textarea>
+        </div>
+        <div>
+            <label for='body-input'>请输入body:</label>
+            <textarea id="body-input" class="materialize-textarea">{}</textarea>
+        </div>
+        <div>
+            <label for='header-input'>请输入header:</label>
+            <textarea id="header-input" class="materialize-textarea">{}</textarea>
+        </div>
+        <div>
+            <label for='schema-input'>请输入schema:</label>
+            <textarea id="schema-input" class="materialize-textarea">{}</textarea>
+        </div>
+        <button class="btn-flat btn-small" style="background-color: gray; color: #FFFFFF" onclick="test_pql()">生成数据</button>
+        <div>&nbsp;</div>
+        <div id="result-div">
+            <label for='pql-result'>结果：</label>
+            <textarea id="pql-result" class="materialize-textarea"></textarea>
+        </div>
+    </div>
+</main>
+
+<!--JavaScript at end of body for optimized loading-->
+<script src="/static/script/jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="/static/script/materialize.min.js"></script>
+<script type="text/javascript" src="/static/script/mock.js"></script>
+<script>
+    $("#result-div").hide();
+    M.textareaAutoResize($('#path-input'));
+    M.textareaAutoResize($('#query-input'));
+    M.textareaAutoResize($('#body-input'));
+    M.textareaAutoResize($('#header-input'));
+    M.textareaAutoResize($('#schema-input'));
+    M.textareaAutoResize($('#pql-result'));
+</script>
+<script>
+function test_pql() {
+    $("#result-div").show();
+    var path_input = JSON.parse($("#path-input").val())
+    var query_input = JSON.parse($("#query-input").val())
+    var body_input = JSON.parse($("#body-input").val())
+    var header_input = JSON.parse($("#header-input").val())
+    var schema_input = JSON.parse($("#schema-input").val())
+    $.ajax({
+        url: '/op/pql',
+        method: 'POST',
+        contentType: "application/json",
+        // dataType: "json",
+        data: JSON.stringify({
+            'path': path_input,
+            'query': query_input,
+            'body': body_input,
+            'header': header_input,
+            'schema': schema_input
+        }),
+        success: function (data) {
+            $("#pql-result").val(JSON.stringify(data, null, 4))
+            M.textareaAutoResize($('#pql-result'));
+        }
+    })
+}
+</script>
+<footer class="center-align" style="margin: 15px 0;">
+    <span class="grey-text text-darken-2">&copy; All rights reserved.</span>
+</footer>
+</body>
+</html>

@@ -23,13 +23,15 @@
 <main>
     <div class='container'>
         <div>
-            <label for='schema-input'>请输入mockjs语法的json</label>
+            <label for="size-input">请输入size：</label>
+            <input id="size-input" value="10" />
+            <label for="schema-input">请输入mockjs语法的json:</label>
             <textarea id="schema-input" class="materialize-textarea"></textarea>
         </div>
         <button class="btn-flat btn-small" style="background-color: gray; color: #FFFFFF" onclick="make_entity()">生成数据</button>
         <div>&nbsp;</div>
         <div id="entity-div">
-            <label for='schema-input'>请将生成结果写入entity目录中，例如entity/User.json</label>
+            <label for="entity-input">请将生成结果写入entity目录中，例如entity/User.json</label>
             <textarea id="entity-input" class="materialize-textarea"></textarea>
         </div>
     </div>
@@ -47,8 +49,10 @@
 <script>
 function make_entity() {
     $("#entity-div").show();
-    var schema_input = JSON.parse($("#schema-input").val())
-    var entity = Mock.mock(schema_input)
+    var schema_input = JSON.parse($("#schema-input").val());
+    var schema = {};
+    schema["data|" + $("#size-input").val()] = [schema_input];
+    var entity = Mock.mock(schema)
     if (entity.data !== undefined)
         entity = entity.data
     $("#entity-input").val(JSON.stringify(entity, null, 4))

@@ -110,7 +110,12 @@
     M.textareaAutoResize($('#extra-input'));
 </script>
 <footer class="center-align" style="margin: 15px 0;">
-    <span class="grey-text text-darken-2">&copy; All rights reserved.</span>
+    <span class="grey-text text-darken-2">&copy; All rights reserved.
+        &nbsp; <a href="/static/mockjs.html">Mockjs</a>
+        &nbsp; <a href="/static/pql.html">PQL</a>
+        &nbsp; <a href="/openapi.kt">kotlin</a>
+        &nbsp; <a href="/solution.md">solution</a>
+    </span>
 </footer>
 </body>
 </html>
