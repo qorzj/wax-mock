@@ -14,7 +14,7 @@ app.add_plugin(RedisPlugin(**config['redis']))
 app.add_interceptor('.*', method='*', dealer=allow_cors)
 app.add_options_mapping('.*', lambda:'')
 
-from wax.mock_api import mock_dealer, pql_playground
+from wax.mock_api import mock_dealer, pql_playground, default_json, check_entities
 from wax.tag_api import make_kotlin_code, make_solution_list, make_openapi_json
 wax_api_prefix = config['mockapi-prefix']
 app.add_mapping(f'{wax_api_prefix}/.*', method='*', dealer=mock_dealer)
@@ -30,3 +30,5 @@ app.add_post_mapping('/op/diff', compare_swagger)
 app.add_get_mapping('/op/{opId}', operation_detail)
 app.add_get_mapping('/op/{opId}/example', operation_example)
 app.add_post_mapping('/op/pql', pql_playground)
+app.add_post_mapping('/op/mockjs/default', default_json)
+app.add_post_mapping('/op/mockjs/check', check_entities)

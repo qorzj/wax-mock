@@ -370,3 +370,18 @@ def pql_playground(query: dict, path: dict, header: dict, body: dict, schema: di
     except Exception as e:
         resp_obj = {'error': str(e), 'type': str(type(e))}
     return resp_obj
+
+
+def default_json(schema: dict):
+    return jsonschema_to_json('$', schema, SwaggerData.get())
+
+
+def check_entities(request: Request):
+    schema = request.json_input['schema']
+    entities = request.json_input['entities']
+    for entity in entities:
+        try:
+            response_check(schema, resp_obj=entity)
+        except InternalError as e:
+            return {'code': 1, 'message': str(e)}
+    return {'code': 0}
