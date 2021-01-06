@@ -11,6 +11,7 @@ from wax.load_swagger import SwaggerData
 from wax.load_func import eval_func, default_func, is_evalable, deep_eval
 from wax.service import StateServ
 from wax.jsonschema_util import jsonschema_to_json
+from wax.pql import apply_schema, PqlRuntimeError
 
 
 def base64ed(buf: bytes) -> str:
@@ -297,22 +298,28 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
                 response.set_status(HttpStatus.of(status_code))
             return jsonschema_to_json('$', schema, SwaggerData.get())
         example = json.loads(example_json)
-
-        func_chain = example.pop('@', []) if isinstance(example, dict) else []
-        if isinstance(func_chain, str):
-            func_chain = [func_chain]
-
-        example = deep_eval(example)
-        resp_obj = json_egg(example, array=False)
-        if isinstance(resp_obj, dict) and '$' in resp_obj:
-            resp_obj = resp_obj['$']
-        resp_obj = chain_filter(func_chain, resp_obj=resp_obj,
-                                request=request, response=response, state=state)
+        # 准备pql的上下文环境
+        if request.is_json():
+            req_body = request.json_input
+        elif request.is_form():
+            req_body = {k: v[0] for (k, v) in request.param_input.form_input.items()}
+        else:
+            req_body = request.body_data
+        req_query = {k: v[0] for (k, v) in request.param_input.query_input.items()}
+        req_path = {**request.param_input.url_input}
+        req_header = {k: request.get_header(k) for k in request.get_headernames()}
+        env = {
+            'body': req_body,
+            'query': req_query,
+            'path': req_path,
+            'header': req_header,
+        }
+        resp_obj = apply_schema(env, dict_schema=example)
         response_check(schema=schema, resp_obj=resp_obj)
         if status_code != 200:
             response.set_status(HttpStatus.of(status_code))
         return resp_obj
-    except InternalError as e:
+    except (InternalError, PqlRuntimeError) as e:
         response.send_content_type(mimekey='txt', encoding='utf-8')
         response.set_status(HttpStatus.InternalServerError)
         return str(e)

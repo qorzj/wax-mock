@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='UTF-8' />
+    <link rel='shortcut icon' type='image/x-icon' href='/static/favicon.ico' media='screen' />
+    <!--Import Google Icon Font-->
+    <link href="/static/css/icons.css" rel="stylesheet" type='text/css' />
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="/static/css/materialize.css" media="screen,projection" />
+    <link href="/static/css/site.css" rel="stylesheet" type='text/css' />
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mockjs playground</title>
+    <style>
+        .tooltip-font {
+            color: #B71C1C;
+        }
+    </style>
+</head>
+
+<body>
+<main>
+    <div class='container'>
+        <div>
+            <label for='schema-input'>请输入mockjs语法的json</label>
+            <textarea id="schema-input" class="materialize-textarea"></textarea>
+        </div>
+        <button class="btn-flat btn-small" style="background-color: gray; color: #FFFFFF" onclick="make_entity()">生成数据</button>
+        <div>&nbsp;</div>
+        <div id="entity-div">
+            <label for='schema-input'>请将生成结果写入entity目录中，例如entity/User.json</label>
+            <textarea id="entity-input" class="materialize-textarea"></textarea>
+        </div>
+    </div>
+</main>
+
+<!--JavaScript at end of body for optimized loading-->
+<script src="/static/script/jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="/static/script/materialize.min.js"></script>
+<script type="text/javascript" src="/static/script/mock.js"></script>
+<script>
+    $("#entity-div").hide();
+    M.textareaAutoResize($('#schema-input'));
+    M.textareaAutoResize($('#entity-input'));
+</script>
+<script>
+function make_entity() {
+    $("#entity-div").show();
+    var schema_input = JSON.parse($("#schema-input").val())
+    var entity = Mock.mock(schema_input)
+    if (entity.data !== undefined)
+        entity = entity.data
+    $("#entity-input").val(JSON.stringify(entity, null, 4))
+    M.textareaAutoResize($('#entity-input'));
+}
+</script>
+<footer class="center-align" style="margin: 15px 0;">
+    <span class="grey-text text-darken-2">&copy; All rights reserved.</span>
+</footer>
+</body>
+</html>
