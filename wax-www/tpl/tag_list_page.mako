@@ -113,6 +113,7 @@
     <span class="grey-text text-darken-2">&copy; All rights reserved.
         &nbsp; <a href="/static/mockjs.html">Mockjs</a>
         &nbsp; <a href="/static/pql.html">PQL</a>
+        &nbsp; <a href="/openapi.json">openapi</a>
         &nbsp; <a href="/openapi.kt">kotlin</a>
         &nbsp; <a href="/solution.md">solution</a>
     </span>

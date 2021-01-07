@@ -4,7 +4,7 @@
 - from|name
 - 根据key/value依次执行map
 - filter
-- sort|reverse
+- sort,reverse
 - only|except
 - rename
 - item
@@ -137,14 +137,7 @@ def apply_schema(env, dict_schema) -> Any:
                 func_or_schemas = [func_or_schemas]
             for func_or_schema in func_or_schemas:
                 if isinstance(func_or_schema, str):
-                    if not func_or_schema:
-                        raise PqlRuntimeError(key, '语法错误，不支持空字符串')
-                    try:
-                        value = apply_lambda(env, func=func_or_schema)
-                    except SyntaxError as e:
-                        raise PqlRuntimeError(key, '语法错误: ' + str(e))
-                    except Exception as e:
-                        raise PqlRuntimeError(key, f'运行时错误: {type(e)} {e}')
+                    value = apply_lambda(env, func=func_or_schema, key=key)
                 elif isinstance(func_or_schema, dict):
                     try:
                         value = apply_schema(dict(env), dict_schema=func_or_schema)
@@ -160,20 +153,22 @@ def apply_schema(env, dict_schema) -> Any:
         is_chosen = True
         if '__filter__' in dict_schema:
             func = dict_schema['__filter__']
-            if not isinstance(func, str):
-                raise PqlRuntimeError('__filter__', '语法错误，只支持str类型')
-            is_chosen = apply_lambda(env, func)
+            is_chosen = apply_lambda(env, func, key='__filter__')
         if is_chosen:
             filterd_rows.append(cur_row)
-    # 第四阶段：sort|reverse
-    if '__sort__' in dict_schema and '__reverse__' in dict_schema:
-        raise PqlRuntimeError('__sort__', '__sort__和__reverse__不能同时定义')
-    if dict_schema.get('__reverse__') is True:
+    # 第四阶段：sort,reverse
+    need_reverse, need_sort = False, False
+    if '__reverse__' in dict_schema:
+        rev_func = dict_schema['__reverse__']
+        rev_env = {k: v for (k, v) in env.items() if k != 'it'}  # 排除it
+        need_reverse = bool(apply_lambda(rev_env, func=rev_func, key='__reverse__'))
+    if '__sort__' in dict_schema:
+        sort_func = dict_schema['__sort__']
+        need_sort = True
+    if need_sort:
+        filterd_rows.sort(key=lambda it: apply_lambda(dict(env, it=it), sort_func, key='__sort__'), reverse=need_reverse)
+    elif need_reverse:
         filterd_rows.reverse()
-    elif '__sort__' in dict_schema or '__reverse__' in dict_schema:
-        need_reverse = '__reverse__' in dict_schema
-        func = dict_schema['__reverse__'] if need_reverse else dict_schema['__sort__']
-        filterd_rows.sort(key=lambda it: apply_lambda(dict(env, it=it), func), reverse=need_reverse)
     # 第五阶段：only|except
     only_names, except_names = [], []
     if '__only__' in dict_schema and '__except__' in dict_schema:
@@ -270,7 +265,14 @@ def apply_items(key: str, rows: Any) -> Dict:
         return {key: rows}
 
 
-def apply_lambda(env: Dict, func: str) -> Any:
-    return eval('lambda %s: %s' % (','.join(env), func))(**env)
-
-
+def apply_lambda(env: Dict, func: str, key: str) -> Any:
+    if not isinstance(func, str):
+        raise PqlRuntimeError(key, '语法错误，只支持str类型')
+    if not func:
+        raise PqlRuntimeError(key, '语法错误，不支持空字符串')
+    try:
+        return eval('lambda %s: %s' % (','.join(env), func))(**env)
+    except SyntaxError as e:
+        raise PqlRuntimeError(key, '语法错误: ' + str(e))
+    except Exception as e:
+        raise PqlRuntimeError(key, f'运行时错误: {type(e)} {e}')
