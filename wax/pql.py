@@ -234,6 +234,7 @@ def apply_schema(env, dict_schema) -> Any:
                 start, end, step = item_indices
                 return renamed_rows[start:end:step]
         except:
+            # 此处故意不抛异常，理解为None是rows[0]的默认值
             return None
     else:
         return renamed_rows
@@ -275,4 +276,4 @@ def apply_lambda(env: Dict, func: str, key: str) -> Any:
     except SyntaxError as e:
         raise PqlRuntimeError(key, '语法错误: ' + str(e))
     except Exception as e:
-        raise PqlRuntimeError(key, f'运行时错误: {type(e)} {e}')
+        raise PqlRuntimeError(key, f'运行时错误: ({e.__name__}) {e}')

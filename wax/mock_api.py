@@ -317,7 +317,7 @@ def mock_dealer(request: Request, response: Response, state: StateServ):
         elif request.is_form():
             req_body = {}
             try:
-                property_dict = {'_': v for v in operation['requestBody']['content'].values()}['_']['schema']['properties']
+                property_dict = operation['requestBody']['content'].popitem()[-1]['schema']['properties']
                 for param_name, param_prop in property_dict.items():
                     if param_name in request.param_input.form_input:
                         req_body[param_name] = cast_param(request.param_input.form_input[param_name], param_prop.get('type', ''))
