@@ -31,7 +31,7 @@
         <div>
             <label for="size-input">请输入size：</label>
             <input id="size-input" value="10" />
-            <label for="schema-input">请输入mockjs语法的json:</label>
+            <label for="schema-input">请输入<a href="http://mockjs.com/" target="_blank">mockjs</a>语法的json:</label>
             <textarea id="schema-input" class="materialize-textarea"></textarea>
         </div>
         <button class="btn-flat btn-small" style="background-color: gray; color: #FFFFFF" onclick="make_entity()">生成entity数据</button>
@@ -94,6 +94,9 @@ function make_entity() {
                 M.textareaAutoResize($('#entity-input'));
             }
         })
+    } else {
+        $("#entity-input").val(JSON.stringify(entity, null, 4));
+        M.textareaAutoResize($('#entity-input'));
     }
 }
 </script>
