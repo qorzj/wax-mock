@@ -5,8 +5,7 @@
 - 根据key/value依次执行map
 - filter
 - sort,reverse
-- only|except
-- rename
+- only|(except,rename)
 - item
 
 ### 变量关键词
@@ -169,41 +168,49 @@ def apply_schema(env, dict_schema) -> Any:
         filterd_rows.sort(key=lambda it: apply_lambda(dict(env, it=it), sort_func, key='__sort__'), reverse=need_reverse)
     elif need_reverse:
         filterd_rows.reverse()
-    # 第五阶段：only|except
+    # 第五阶段：only|(except,rename)
+    # 本阶段的产出是renamed_rows
     only_names, except_names = [], []
-    if '__only__' in dict_schema and '__except__' in dict_schema:
-        raise PqlRuntimeError('__only__', '__only__和__except__不能同时定义')
+    rename_rules = {}
     if '__only__' in dict_schema:
-        only_names = dict_schema['__only__']
-        if not isinstance(only_names, list) or not all(isinstance(name, str) for name in only_names):
+        if '__except__' in dict_schema:
+            raise PqlRuntimeError('__only__', '__only__和__except__不能同时定义')
+        if '__rename__' in dict_schema:
+            raise PqlRuntimeError('__only__', '__only__和__rename__不能同时定义')
+        rename_pairs = dict_schema['__only__']
+        if not isinstance(rename_pairs, list) or not all(isinstance(name, str) for name in rename_pairs):
             raise PqlRuntimeError('__only__', '语法错误，只支持list[str]类型')
-        if not all(is_var_name(name) for name in only_names):
-            raise PqlRuntimeError('__only__', '语法错误')
+        for name_pair in rename_pairs:
+            outer_name, inner_name = match_name_pair(name_pair)
+            if not inner_name:
+                raise PqlRuntimeError('__only__', '语法错误')
+            elif not outer_name:
+                only_names.append(inner_name)
+            else:
+                rename_rules[inner_name] = outer_name
     elif '__except__' in dict_schema:
-        except_names = dict_schema['__except__']
+        except_names.extend(dict_schema['__except__'])
         if not isinstance(except_names, list) or not all(isinstance(name, str) for name in except_names):
             raise PqlRuntimeError('__except__', '语法错误，只支持list[str]类型')
         if not all(is_var_name(name) for name in except_names):
             raise PqlRuntimeError('__except__', '语法错误')
-    # 第六阶段：rename
-    rename_rules = {}
-    if '__rename__' in dict_schema:
-        rename_pairs = dict_schema['__rename__']
-        if not isinstance(rename_pairs, list) or not all(isinstance(name, str) for name in rename_pairs):
-            raise PqlRuntimeError('__rename__', '语法错误，只支持list[str]类型')
-        for name_pair in rename_pairs:
-            outer_name, inner_name = match_name_pair(name_pair)
-            if not inner_name or not outer_name:
-                raise PqlRuntimeError('__rename__', '语法错误')
-            rename_rules[inner_name] = outer_name
+        if '__rename__' in dict_schema:
+            rename_pairs = dict_schema['__rename__']
+            if not isinstance(rename_pairs, list) or not all(isinstance(name, str) for name in rename_pairs):
+                raise PqlRuntimeError('__rename__', '语法错误，只支持list[str]类型')
+            for name_pair in rename_pairs:
+                outer_name, inner_name = match_name_pair(name_pair)
+                if not inner_name or not outer_name:
+                    raise PqlRuntimeError('__rename__', '语法错误')
+                rename_rules[inner_name] = outer_name
     for cur_row in filterd_rows:
         if isinstance(cur_row, dict):
-            # 第五阶段：only|except
+            # 处理only|except
             if '__only__' in dict_schema:  # 重要，不可省略！
                 cur_row = {key: value for (key, value) in cur_row.items() if key in only_names}
             elif '__except__' in dict_schema:
                 cur_row = {key: value for (key, value) in cur_row.items() if key not in except_names}
-            # 第六阶段：rename
+            # 处理rename
             renamed_row = {}
             for key, value in cur_row.items():
                 if key in rename_rules:
@@ -214,7 +221,7 @@ def apply_schema(env, dict_schema) -> Any:
             renamed_row = {key: value for (key, value) in renamed_row.items()
                            if key and value is not None}
             renamed_rows.append(renamed_row)
-    # 第七阶段：item
+    # 第六阶段：item
     if '__item__' in dict_schema:
         item_indices = dict_schema['__item__']
         if not isinstance(item_indices, list) or not all(
