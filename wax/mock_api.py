@@ -368,7 +368,7 @@ def pql_playground(query: dict, path: dict, header: dict, body: dict, schema: di
     try:
         resp_obj = apply_schema(env, dict_schema=schema)
     except Exception as e:
-        resp_obj = {'error': str(e), 'type': str(type(e))}
+        resp_obj = {'error': str(e), 'type': type(e).__name__}
     return resp_obj
 
 

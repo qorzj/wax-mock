@@ -184,9 +184,8 @@ def apply_schema(env, dict_schema) -> Any:
             outer_name, inner_name = match_name_pair(name_pair)
             if not inner_name:
                 raise PqlRuntimeError('__only__', '语法错误')
-            elif not outer_name:
-                only_names.append(inner_name)
-            else:
+            only_names.append(inner_name)
+            if outer_name:
                 rename_rules[inner_name] = outer_name
     elif '__except__' in dict_schema:
         except_names.extend(dict_schema['__except__'])
@@ -283,4 +282,4 @@ def apply_lambda(env: Dict, func: str, key: str) -> Any:
     except SyntaxError as e:
         raise PqlRuntimeError(key, '语法错误: ' + str(e))
     except Exception as e:
-        raise PqlRuntimeError(key, f'运行时错误: ({e.__name__}) {e}')
+        raise PqlRuntimeError(key, f'运行时错误: ({type(e).__name__}) {e}')
