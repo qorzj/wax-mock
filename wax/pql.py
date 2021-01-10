@@ -251,22 +251,28 @@ def apply_items(key: str, rows: Any) -> Dict:
     把(key, rows)变成字典类型的值。
     例如：
     {'name': rows} => {'name': rows}
-    {'**name': rows} => {**rows}
-    {'**name': rows} => {}  # error! rows is not dict
+    {'**name': row} => {**row}
+    {'**name': rows} => {**rows[0]}
     {'**name[0]': rows} => {}  # error!
     """
     match_ret = re.match(r'^(\*\*)?(\w+)$', key)
     if not match_ret:
         raise PqlRuntimeError('', 'key语法错误')
     if key.startswith('**'):
-        if rows is None:  # {"__item__": [0]}可能返回None
+        if isinstance(rows, list):
+            if not rows:
+                return {}
+            row = rows[0]
+        else:
+            row = rows
+        if row is None:  # {"__item__": [0]}可能返回None
             return {}
-        if not isinstance(rows, dict):
-            raise PqlRuntimeError('', '运行时错误，值不是dict类型，考虑使用__item__')
+        if not isinstance(row, dict):
+            raise PqlRuntimeError('', '运行时错误，只支持dict?|list[dict?]类型')
         key_prefix = match_ret.groups()[1]
         return {
             (key_prefix + sub_key if key_prefix[-1] == '_' else key_prefix + sub_key[0].upper() + sub_key[1:]): value
-            for sub_key, value in rows.items()
+            for sub_key, value in row.items()
         }
     else:
         return {key: rows}
