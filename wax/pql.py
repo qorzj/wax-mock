@@ -193,15 +193,15 @@ def apply_schema(env, dict_schema) -> Any:
             raise PqlRuntimeError('__except__', '语法错误，只支持list[str]类型')
         if not all(is_var_name(name) for name in except_names):
             raise PqlRuntimeError('__except__', '语法错误')
-        if '__rename__' in dict_schema:
-            rename_pairs = dict_schema['__rename__']
-            if not isinstance(rename_pairs, list) or not all(isinstance(name, str) for name in rename_pairs):
-                raise PqlRuntimeError('__rename__', '语法错误，只支持list[str]类型')
-            for name_pair in rename_pairs:
-                outer_name, inner_name = match_name_pair(name_pair)
-                if not inner_name or not outer_name:
-                    raise PqlRuntimeError('__rename__', '语法错误')
-                rename_rules[inner_name] = outer_name
+    if '__rename__' in dict_schema:
+        rename_pairs = dict_schema['__rename__']
+        if not isinstance(rename_pairs, list) or not all(isinstance(name, str) for name in rename_pairs):
+            raise PqlRuntimeError('__rename__', '语法错误，只支持list[str]类型')
+        for name_pair in rename_pairs:
+            outer_name, inner_name = match_name_pair(name_pair)
+            if not inner_name or not outer_name:
+                raise PqlRuntimeError('__rename__', '语法错误')
+            rename_rules[inner_name] = outer_name
     for cur_row in filterd_rows:
         if isinstance(cur_row, dict):
             # 处理only|except
