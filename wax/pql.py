@@ -284,7 +284,7 @@ def apply_lambda(env: Dict, func: str, key: str) -> Any:
     if not func:
         raise PqlRuntimeError(key, '语法错误，不支持空字符串')
     try:
-        return eval('lambda %s: %s' % (','.join(env), func))(**env)
+        return eval('lambda %s: (%s)' % (','.join(env), func))(**env)
     except SyntaxError as e:
         raise PqlRuntimeError(key, '语法错误: ' + str(e))
     except Exception as e:

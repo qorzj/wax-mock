@@ -7,6 +7,5 @@ requests
 typing_inspect
 typing_extensions
 redis
-hiredis
 Mako
 PyYAML
