@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Tuple
 import json
 import re
 import hashlib
@@ -103,11 +103,12 @@ class Kprop:
         else:
             return f'{self.ktype}<{self.generic}>'
 
-    def to_kcode(self, type_var='') -> str:
+    def to_kcode(self, type_var='T') -> Tuple[str, str]:  # (ktype_str, type_var)
         real_ktype = self.to_ktype(type_var)
+        next_type_var = chr(ord(type_var)+1) if f'<{type_var}>' in real_ktype else type_var
         return ('@NotNull\n' if self.notNull else '') + \
                f"""@Schema(description = {safe_str(self.description)})
-var {self.name}: {real_ktype}? = null\n"""
+var {self.name}: {real_ktype}? = null\n""", next_type_var
 
 
 class Kclass:
@@ -127,8 +128,10 @@ class Kclass:
         if self.generics:
             ret += '<' + ', '.join(chr(ord('T') + i) for i, _ in enumerate(self.generics)) + '>'
         ret += ' {\n'
+        type_var = 'T'
         for prop in self.properties:
-            ret += indented(prop.to_kcode(type_var='T')) + '\n'
+            kcode_str, type_var = prop.to_kcode(type_var=type_var)
+            ret += indented(kcode_str) + '\n'
         ret += '}\n'
         return ret
 
@@ -143,7 +146,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
     if '$ref' in schema:
         ref_schema = jsonschema_from_ref(schema['$ref'], swagger_data)
         typename = schema['$ref'].rsplit('/', 1)[-1]
-        kclass = schema_to_kclass(ref_schema, typename, swagger_data)
+        kclass = schema_to_kclass(ref_schema, typename, swagger_data, cache=True)
         ktype = jsontype_to_ktype('object')
         generic = f'{kclass.typeName}<{", ".join(kclass.generics)}>' if kclass.generics else kclass.typeName
     else:
@@ -160,7 +163,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
                 ktype += '<' + kprop.ktype + '>'
                 generic = ''
         elif 'object' in types:
-            kclass = schema_to_kclass(schema, make_typename(propname, schema), swagger_data)
+            kclass = schema_to_kclass(schema, make_typename(propname, schema), swagger_data, cache=False)
             ktype = jsontype_to_ktype('object')
             generic = f'{kclass.typeName}<{", ".join(kclass.generics)}>' if kclass.generics else kclass.typeName
         else:
@@ -176,7 +179,7 @@ def schema_to_kprop(propname: str, schema: Dict, swagger_data) -> Kprop:
     return kprop
 
 
-def schema_to_kclass(schema: Dict, typeName, swagger_data) -> Kclass:
+def schema_to_kclass(schema: Dict, typeName, swagger_data, *, cache) -> Kclass:
     """
     object_type_schema -> properties & required -> kclass
     """
@@ -187,10 +190,13 @@ def schema_to_kclass(schema: Dict, typeName, swagger_data) -> Kclass:
     if sign in kclass_index:
         if typeName in swagger_data['components']['schemas']:
             kclass_index[sign].typeName = typeName
+        if cache:
+            return kclass_index[sign]
     kclass = Kclass()
     kclass.typeName = typeName
     kclass.properties = []
     kclass.generics = []
+    kclass_index[sign] = kclass
     for key, val in properties.items():
         kprop = schema_to_kprop(key, val, swagger_data)
         if key in required:
@@ -198,7 +204,6 @@ def schema_to_kclass(schema: Dict, typeName, swagger_data) -> Kclass:
         kclass.properties.append(kprop)
         if kprop.ktype == 'List' and kprop.generic:
             kclass.generics.append(kprop.generic)
-    kclass_index[sign] = kclass
     return kclass
 
 

@@ -191,7 +191,7 @@ def make_kotlin_code(ctx: Context) -> str:
     swagger_data = SwaggerData.get()
     ret = [import_headers()]
     for name, schema in swagger_data['components']['schemas'].items():
-        schema_to_kclass(schema, name, swagger_data)
+        schema_to_kclass(schema, name, swagger_data, cache=False)
     for path, endpoint in swagger_data['paths'].items():
         ret.append(endpoint_to_kcontroller(path, endpoint, swagger_data))
     for kclass in kclass_index.values():
