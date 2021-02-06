@@ -187,7 +187,6 @@ def schema_to_kclass(schema: Dict, typeName, swagger_data) -> Kclass:
     if sign in kclass_index:
         if typeName in swagger_data['components']['schemas']:
             kclass_index[sign].typeName = typeName
-        return kclass_index[sign]
     kclass = Kclass()
     kclass.typeName = typeName
     kclass.properties = []
