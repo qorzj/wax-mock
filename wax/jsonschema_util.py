@@ -71,7 +71,7 @@ def compare_json(level, actual, expect, full_actual, full_expect) -> List[str]:
             return item.get('status_code', '') + ':' + item['content_type'], item['rows']
         raise NotImplementedError(item)
 
-    if level.endswith(':examples') or level.endswith(':items:description'):
+    if level.endswith((':examples', ':x-examples', ':items:description')):
         return []
     if level.count(':') > 50:  # 层级过深不再"深究"
         return []
