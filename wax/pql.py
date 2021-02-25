@@ -6,7 +6,7 @@
 - filter
 - sort,reverse
 - only|(except,rename)
-- item
+- item|return
 
 ### 变量关键词
 - it
@@ -36,6 +36,7 @@ KEYWORDS = [
     '__except__',
     '__rename__',
     '__item__',
+    '__return__',
 ]
 
 
@@ -155,6 +156,8 @@ def apply_schema(env, dict_schema) -> Any:
             is_chosen = apply_lambda(env, func, key='__filter__')
         if is_chosen:
             filterd_rows.append(cur_row)
+    # 循环结束后outer_name代表renamed_rows，而不再是cur_row
+    env[outer_name] = renamed_rows
     # 第四阶段：sort,reverse
     need_reverse, need_sort = False, False
     if '__reverse__' in dict_schema:
@@ -220,16 +223,18 @@ def apply_schema(env, dict_schema) -> Any:
             renamed_row = {key: value for (key, value) in renamed_row.items()
                            if key and value is not None}
             renamed_rows.append(renamed_row)
-    # 第六阶段：item
+    # 第六阶段：item|return
     if '__item__' in dict_schema:
+        if '__return__' in dict_schema:
+            raise PqlRuntimeError('__item__', '__item__和__return__不能同时定义')
         item_indices = dict_schema['__item__']
         if not isinstance(item_indices, list) or not all(
                 indice is None or isinstance(indice, int) for indice in item_indices):
-            raise PqlRuntimeError('__return__', '语法错误，只支持list[int?]类型')
+            raise PqlRuntimeError('__item__', '语法错误，只支持list[int?]类型')
         if not 1 <= len(item_indices) <= 3:
-            raise PqlRuntimeError('__return__', '语法错误，长度应该在1~3范围内')
+            raise PqlRuntimeError('__item__', '语法错误，长度应该在1~3范围内')
         if len(item_indices) == 1 and item_indices[0] is None:
-            raise PqlRuntimeError('__return__', '语法错误，单个下标不能为null')
+            raise PqlRuntimeError('__item__', '语法错误，单个下标不能为null')
         try:
             if len(item_indices) == 1:
                 return renamed_rows[item_indices[0]]
@@ -242,6 +247,9 @@ def apply_schema(env, dict_schema) -> Any:
         except:
             # 此处故意不抛异常，理解为None是rows[0]的默认值
             return None
+    elif '__return__' in dict_schema:
+        func = dict_schema['__return__']
+        return apply_lambda(env, func, key='__return__')
     else:
         return renamed_rows
 
