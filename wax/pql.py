@@ -157,7 +157,8 @@ def apply_schema(env, dict_schema) -> Any:
         if is_chosen:
             filterd_rows.append(cur_row)
     # 循环结束后outer_name代表renamed_rows，而不再是cur_row
-    env[outer_name] = renamed_rows
+    if outer_name:
+        env[outer_name] = renamed_rows
     # 第四阶段：sort,reverse
     need_reverse, need_sort = False, False
     if '__reverse__' in dict_schema:
