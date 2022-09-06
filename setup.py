@@ -38,7 +38,7 @@ setup(
         description='Mock server with Swagger OpenAPI3 JSON',
         long_description='\npip install wax-mock\n\n'
                          'wax swagger_api.json',
-        url='https://pypi.python.org/project/wax-mock',
+        url='https://github.com/qorzj/wax-mock',
         author='qorzj',
         author_email='inull@qq.com',
         license='MIT',
